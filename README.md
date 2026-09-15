@@ -1,16 +1,15 @@
-# DTL War Room — Railway-safe build
+# DTL War Room v1.3
 
-This build embeds the entire frontend and seed state inside `server.js`. It does **not** require a `public/` or `data/` folder, so a partial GitHub upload cannot cause `ENOENT: /app/public/index.html`.
+This build keeps the mobile War Room and specific DTL-video assignments, and adds a real server-side Opportunity scanner.
 
-Required files at repository root:
-- `server.js`
-- `package.json`
-- `railway.json`
+## Opportunity Bot
+- Starts a public-source scan shortly after Railway boots.
+- Re-scans every 30 minutes by default.
+- Searches public web and Google News result feeds for creator sponsorships, affiliate programs, creator campaigns, product seeding, PR samples, food/beverage opportunities, gaming opportunities, and entertainment/podcast partnerships.
+- Stores source-linked lead signals, DTL fit score, scan time, source count, and scanner status.
+- Never invents compensation or contacts: those remain marked unverified until a public source confirms them.
+- Includes a **SCAN NOW** button on the Opportunities tab.
 
-No environment variable is required to render the site. `DATABASE_URL` enables persistent Postgres state. `INGEST_TOKEN` protects write endpoints. Railway supplies `PORT`.
+Optional: set `OPPORTUNITY_SCAN_INTERVAL_MINUTES` on Railway to change the default 30-minute cycle (minimum 10). No new variable is required.
 
-
-## v5 — agent CURRENTLY DOING cards
-The main Command page and Agents page now show a structured **CURRENTLY DOING** panel for every specialist: task type, exact video/target when known, platform, detail, and last task update. Existing state remains compatible.
-
-For live per-agent updates, send `POST /api/agents/:id` with fields such as `taskType`, `videoTitle`, `targetTitle`, `targetKind`, `platform`, `currentlyDoing`, `finding`, and `confidence`.
+Required root files for Railway remain `server.js`, `package.json`, and `railway.json`.
