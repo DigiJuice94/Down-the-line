@@ -77,6 +77,11 @@ app.post('/api/opportunities', async (req,res) => {
 });
 
 app.get('/health', (_req,res) => res.json({ok:true, service:'dtl-war-room'}));
-app.get('*', (_req,res) => res.sendFile(path.join(__dirname,'public','index.html')));
+// SPA fallback. Express 5/path-to-regexp no longer accepts app.get('*').
+// A pathless middleware fallback works for every unmatched browser route.
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 initDb().then(() => app.listen(PORT, () => console.log(`DTL War Room listening on ${PORT}`))).catch(err => { console.error(err); process.exit(1); });
