@@ -30,5 +30,16 @@ Optional only: `DTL_COOKIES_FILE` may point to a Netscape cookie file if TikTok/
 Media workers now consume each assigned DTL video continuously from 0:00 through 10:00, or the full runtime when the video is shorter than ten minutes. The same acquired media analysis is shared between specialists assigned to the same episode so Hook/Packaging and Retention/Content do not redundantly acquire the same ten-minute window. Retention and Content use the full continuous transcript window, one-minute topic windows, scene changes, silence, pacing, and likely topic/segment transitions. Worker proof records the exact continuous range analyzed.
 
 
-## v1.8 mobile monochrome redesign
+## v1.9 mobile monochrome redesign
 Mobile-first black-and-white War Room: true black background, white text and controls, stronger DTL header lockup, and recognizable white bot faces with simple role-specific expressions. Continuous ten-minute viewing and all v1.7 worker functionality remain intact. Desktop refinement is intentionally deferred for a later pass.
+
+
+## v1.9 worker recovery
+
+- Fixes the Railway/YouTube failure shown as `Sign in to confirm you’re not a bot`.
+- Railway now builds a current yt-dlp runtime plus the bgutil PO-token provider and Node JS runtime support.
+- A blocked YouTube/TikTok/Instagram source no longer marks every worker as failed. Each worker records its own source result and the rest of the cycle keeps running.
+- YouTube discovery has an RSS fallback when profile extraction is blocked. Set `DTL_YOUTUBE_CHANNEL_ID` only if the handle page itself cannot expose the channel ID.
+- Optional emergency auth: `DTL_YOUTUBE_COOKIES_B64` can contain a base64 Netscape-format YouTube cookie file. This is not required for the first deploy and should only be used if YouTube continues blocking Railway after the PO-token path. Do not paste account passwords into the app.
+- Worker engine now reports `PARTIAL / SCHEDULED` instead of turning the entire team red when one source is inaccessible.
+- The continuous ten-minute episode analysis and the v1.8 black/white mobile design remain intact.
