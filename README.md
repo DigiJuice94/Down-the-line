@@ -1,15 +1,20 @@
-# DTL War Room — Opportunity First Update
+# DTL War Room — Clean Hero + Monetization First
 
-Homepage order now starts with:
-1. Opportunities split into Free Product Reviews / Potential Sponsors / Potential Affiliates
-2. Top 5 current hashtags + top 5 rising keywords
-3. Rolling last-30-minute analysis summary
-4. Worker workflow with glowing status dots
-5. Platform monetization cards and deeper meeting/game-plan/activity tabs
+This update removes the illustrated bot strip from the hero, uses the transparent Down The Line logo, and puts the three platform follower/monetization cards directly under the logo.
 
-Opportunity cards open dedicated `/opportunity/:id` pages with product/website links, contact route, partnership description, compensation details, and a pre-typed outreach email with a copy button.
+Homepage order:
+1. Transparent Down The Line logo
+2. TikTok / Instagram / YouTube monetization cards
+3. Opportunities
+4. Trending hashtags + keywords
+5. 30-minute analysis
+6. Worker workflow/status
+7. Meeting Room / Game Plan / Activity
 
-New ingest endpoints:
-- POST `/api/trends`
-- POST `/api/analysis30m`
-- Existing `/api/ingest` also accepts `trends` and `analysis30m`.
+Files:
+- server.js
+- page.html
+- package.json
+- railway.json
+- logo.png
+- README.md
