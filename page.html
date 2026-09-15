@@ -6,220 +6,96 @@
 <title>DTL War Room</title>
 <style>
 :root{
-  --bg:#000;
-  --panel:#0b0b0b;
-  --panel-2:#111;
-  --line:#232323;
-  --line-soft:#2f2f2f;
-  --text:#fff;
-  --muted:#a7a7a7;
-  --muted-2:#7d7d7d;
-  --shadow:0 20px 50px rgba(0,0,0,.35);
+  --bg:#000;--panel:#0b0b0b;--panel2:#101010;--line:#242424;--line2:#343434;
+  --text:#fff;--muted:#aaa;--muted2:#737373;--green:#53ff8b;--blue:#58a6ff;--red:#ff5d68;
+  --shadow:0 18px 46px rgba(0,0,0,.34)
 }
 *{box-sizing:border-box}
 html,body{margin:0;max-width:100%;overflow-x:hidden;background:#000;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{background:radial-gradient(circle at top, #141414 0, #090909 18%, #000 52%)}
-button,input,select,textarea{font:inherit}
-a{color:inherit}
-.shell{max-width:1520px;margin:0 auto;padding:18px 18px 40px}
-.top-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
-.strip-left,.strip-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--line-soft);border-radius:999px;background:rgba(11,11,11,.88);color:#fff;font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
-.dot{width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.7)}
-.hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:34px;background:linear-gradient(180deg,rgba(14,14,14,.98),rgba(6,6,6,.98));padding:26px 28px 0;box-shadow:var(--shadow);margin-bottom:18px}
-.hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 24%,transparent 76%,rgba(255,255,255,.025));pointer-events:none}
-.hero-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center}
-.hero-kicker{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#c7c7c7;font-weight:900;margin-bottom:16px}
-.hero-logo{width:min(680px, 72vw);height:auto;display:block;filter:drop-shadow(0 12px 34px rgba(0,0,0,.4));margin:4px auto 14px}
-.hero-sub{max-width:760px;color:var(--muted);font-size:14px;line-height:1.55;margin:0 auto 24px}
-.hero-art-wrap{position:relative;width:100%;min-height:220px;padding-top:10px}
-.hero-art{display:block;width:min(1040px, 100%);margin:0 auto;opacity:.95;filter:drop-shadow(0 14px 28px rgba(0,0,0,.45))}
-.speech{position:absolute;max-width:220px;padding:12px 14px;border:1px solid #3b3b3b;border-radius:18px;background:rgba(14,14,14,.97);box-shadow:0 10px 26px rgba(0,0,0,.3);text-align:left}
-.speech b{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
-.speech p{margin:0;color:#e2e2e2;font-size:12px;line-height:1.45}
-.speech::after{content:'';position:absolute;width:14px;height:14px;background:rgba(14,14,14,.97);border-right:1px solid #3b3b3b;border-bottom:1px solid #3b3b3b;transform:rotate(45deg)}
-.s1{left:4%;top:8%}.s1::after{left:28px;bottom:-8px}
-.s2{left:28%;top:0}.s2::after{left:36px;bottom:-8px}
-.s3{right:28%;top:2%}.s3::after{right:36px;bottom:-8px}
-.s4{right:4%;top:10%}.s4::after{right:28px;bottom:-8px}
-.platform-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
-.card{background:linear-gradient(180deg,#101010,#090909);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow)}
-.row,.platform-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
-.platform-name{font-size:22px;font-weight:900}.handle,.muted{color:var(--muted);font-size:12px}.big{font-size:34px;font-weight:900;margin:16px 0 4px}
-.progress{height:10px;background:#1d1d1d;border-radius:999px;overflow:hidden;margin:8px 0}.progress i{display:block;height:100%;background:linear-gradient(90deg,#8b8b8b,#fff);border-radius:999px}.metric{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}.data-missing{color:#eed17d;font-size:12px;font-weight:900;margin-top:8px}.note{font-size:12px;color:var(--muted);line-height:1.55}
-.tabs{display:flex;gap:8px;overflow:auto;scrollbar-width:none;margin:0 0 14px;padding-bottom:6px}.tabs::-webkit-scrollbar{display:none}.tabs button{border:1px solid var(--line-soft);background:#090909;color:#bcbcbc;border-radius:999px;padding:11px 14px;font-size:11px;font-weight:900;letter-spacing:.1em;cursor:pointer;white-space:nowrap;transition:.18s ease}.tabs button.active{background:#fff;color:#000;border-color:#fff}.tabs button:hover{border-color:#5a5a5a;color:#fff}
-.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.span12{grid-column:span 12}.span8{grid-column:span 8}.span6{grid-column:span 6}.span4{grid-column:span 4}
-.section-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#c2c2c2;font-weight:900;margin-bottom:14px}
-.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.summary-tile{padding:16px;border:1px solid var(--line);border-radius:18px;background:#0c0c0c}.summary-label{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#b1b1b1;font-weight:900;margin-bottom:8px}.summary-value{font-size:26px;font-weight:900}.summary-sub{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.45}
-.agent-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.agent{padding:16px;border:1px solid var(--line);border-radius:20px;background:#0c0c0c;min-width:0}.agent-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}.agent-id{flex:1;min-width:0}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#000;border:1px solid #4a4a4a;color:#fff;font-weight:900}.status{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:#fff;font-weight:900}.agent h3{margin:4px 0 2px;font-size:13px}.agent p{margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
-.current-task{margin-top:14px;padding:12px;border:1px solid #353535;border-radius:16px;background:linear-gradient(180deg,#121212,#0b0b0b)}.task-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.task-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#fff;font-weight:900}.task-type{font-size:8px;letter-spacing:.08em;text-transform:uppercase;border:1px solid #4a4a4a;border-radius:999px;padding:4px 8px;color:#fff;font-weight:900}.task-target{font-size:13px;font-weight:900;line-height:1.32;color:#fff;overflow-wrap:anywhere}.task-meta{font-size:10px;color:#dbdbdb;margin-top:6px}.task-detail{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px}.task-time{font-size:9px;color:#7c7c7c;margin-top:8px}.finding{padding-top:10px;border-top:1px solid var(--line);margin-top:10px}
-.activity-item{padding:12px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.45}.activity-item b{font-size:11px;margin-right:8px}
-.decision-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.decision{border:1px solid var(--line);border-radius:16px;background:#0c0c0c;padding:14px}.decision b{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px}
-.meeting-stage{min-height:580px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:radial-gradient(circle at center,#171717,#090909 58%,#040404);padding:26px}.table-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:270px;height:150px;border-radius:50%;border:1px solid #393939;background:#0f0f0f;display:grid;place-items:center;text-align:center;padding:20px}.meeting-agent{position:absolute;width:190px}.meeting-agent .bubble{margin-top:8px;padding:10px;border:1px solid #363636;border-radius:14px;background:#141414;font-size:11px;line-height:1.42;color:#e4e4e4}.meeting-agent .avatar{margin:0}
-.opp{display:grid;grid-template-columns:1.3fr .7fr .7fr .8fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--line);align-items:start}.fit{font-size:22px;font-weight:900}.pitch{white-space:pre-wrap;background:#070707;border:1px solid var(--line);padding:14px;border-radius:14px;color:#dedede;font-size:12px;line-height:1.55;margin-top:10px}.headline{font-size:34px;line-height:1.08;max-width:820px;margin:6px 0 22px}.post-now{padding:14px;border:1px solid var(--line);border-radius:14px;margin-bottom:10px}.empty-state{padding:18px;border:1px dashed #333;border-radius:18px;color:#bdbdbd}
-@media (max-width:1100px){.platform-grid{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.agent-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.span8,.span6,.span4{grid-column:span 12}.decision-grid{grid-template-columns:1fr}.opp{grid-template-columns:1fr 1fr}.meeting-stage{min-height:auto}.meeting-agent,.table-core{position:static;transform:none;width:auto;height:auto;margin:10px 0}.meeting-stage{display:block}}
-@media (max-width:700px){.shell{padding:12px 12px 30px}.top-strip{margin-bottom:12px}.hero{padding:16px 16px 0;border-radius:24px}.hero-logo{width:min(540px,88vw)}.hero-sub{font-size:13px}.hero-art-wrap{min-height:180px;padding-top:0}.speech{position:static;max-width:none;margin:10px 0}.speech::after{display:none}.platform-name{font-size:20px}.big{font-size:28px}.tabs{position:sticky;top:10px;z-index:20;background:linear-gradient(180deg,#000,#000 70%,transparent);padding-top:6px}.summary-grid{grid-template-columns:1fr}.agent-grid{grid-template-columns:1fr}.opp{grid-template-columns:1fr}.headline{font-size:25px}.meeting-stage{padding:18px}.row,.platform-head,.task-head{flex-wrap:wrap}}
+body{background:radial-gradient(circle at top,#141414 0,#080808 20%,#000 52%)}
+a{color:inherit;text-decoration:none}button{font:inherit}.shell{max-width:1520px;margin:0 auto;padding:16px 18px 42px}
+.top-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#b9b9b9;font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}
+.strip-group{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:999px;background:#090909;padding:9px 12px;font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.dot-white{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 12px #fff8}
+.hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:32px;background:linear-gradient(180deg,#111,#060606);padding:24px 28px 0;box-shadow:var(--shadow);margin-bottom:18px}.hero-inner{text-align:center}.hero-kicker{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:#bdbdbd;font-weight:900;margin-bottom:12px}.hero-logo{width:min(980px,82vw);height:auto;display:block;margin:0 auto 12px;filter:drop-shadow(0 12px 34px #0008)}.hero-sub{max-width:780px;margin:0 auto 22px;color:var(--muted);font-size:13px;line-height:1.55}.hero-art-wrap{position:relative;min-height:190px}.hero-art{display:block;width:min(1050px,100%);margin:0 auto;filter:drop-shadow(0 14px 28px #0008)}
+.speech{position:absolute;max-width:215px;border:1px solid #3b3b3b;border-radius:17px;background:#101010f5;padding:10px 12px;text-align:left;box-shadow:0 10px 24px #0007}.speech b{display:block;font-size:9px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:5px}.speech p{margin:0;color:#dedede;font-size:11px;line-height:1.4}.speech:after{content:"";position:absolute;width:12px;height:12px;background:#101010;border-right:1px solid #3b3b3b;border-bottom:1px solid #3b3b3b;transform:rotate(45deg);bottom:-7px}.s1{left:3%;top:7%}.s1:after{left:24px}.s2{left:29%;top:0}.s2:after{left:30px}.s3{right:29%;top:1%}.s3:after{right:30px}.s4{right:3%;top:8%}.s4:after{right:24px}
+.section{margin-top:16px}.section-card{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,#0e0e0e,#080808);box-shadow:var(--shadow);padding:18px}.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:14px}.section-eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#b9b9b9;font-weight:900}.section-head h2{margin:4px 0 0;font-size:27px}.section-note{font-size:11px;color:var(--muted);max-width:520px;line-height:1.5;text-align:right}
+.opp-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.opp-category{border:1px solid var(--line);border-radius:20px;background:#0a0a0a;padding:14px}.opp-category-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:11px;margin-bottom:6px;border-bottom:1px solid var(--line)}.opp-category-title b{font-size:13px}.opp-category-title span{font-size:9px;color:#a9a9a9;letter-spacing:.1em;text-transform:uppercase}.opp-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:13px 8px;border-bottom:1px solid #1d1d1d;border-radius:12px;transition:.16s ease}.opp-row:last-child{border-bottom:none}.opp-row:hover{background:#121212;transform:translateY(-1px)}.opp-name{font-weight:850;font-size:13px}.opp-desc{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.35}.fit-badge{min-width:56px;text-align:center;border:1px solid #424242;border-radius:999px;padding:7px 9px;font-size:11px;font-weight:900}.fit-badge small{display:block;color:#8e8e8e;font-size:7px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1px}.empty{padding:14px;color:#888;border:1px dashed #333;border-radius:14px;font-size:12px}
+.trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.trend-card{border:1px solid var(--line);border-radius:20px;background:#0a0a0a;padding:14px}.trend-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:9px}.trend-title b{font-size:14px}.refresh-tag{font-size:9px;color:#a9a9a9;letter-spacing:.09em;text-transform:uppercase}.trend-list{display:grid;gap:7px}.trend-item{display:grid;grid-template-columns:32px 1fr auto;gap:9px;align-items:center;padding:10px;border:1px solid #202020;border-radius:14px;background:#0e0e0e}.trend-rank{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#000;font-weight:900;font-size:11px}.trend-term{font-size:13px;font-weight:850}.trend-meta{font-size:10px;color:#909090;margin-top:3px}.trend-score{font-size:11px;font-weight:900;text-align:right}.source-line{font-size:9px;color:#6f6f6f;margin-top:10px;line-height:1.35}
+.analysis-grid{display:grid;grid-template-columns:1.15fr repeat(3,1fr);gap:12px}.analysis-box{border:1px solid var(--line);border-radius:18px;background:#0a0a0a;padding:14px;min-height:150px}.analysis-box b{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px}.analysis-box p{margin:0;color:#d6d6d6;font-size:12px;line-height:1.55}.analysis-box.good b{color:var(--green)}.analysis-box.bad b{color:#ff9aa1}.analysis-box.improve b{color:#8ec5ff}
+.workflow-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.bot-card{border:1px solid var(--line);border-radius:19px;background:#0a0a0a;padding:14px;min-width:0}.bot-head{display:flex;align-items:flex-start;gap:9px}.bot-status-dot{width:11px;height:11px;flex:0 0 11px;border-radius:50%;margin-top:3px}.bot-status-dot.green{background:var(--green);box-shadow:0 0 13px #53ff8bcc}.bot-status-dot.blue{background:var(--blue);box-shadow:0 0 13px #58a6ffcc}.bot-status-dot.red{background:var(--red);box-shadow:0 0 13px #ff5d68cc}.bot-name{font-size:12px;font-weight:900}.bot-role{font-size:9px;color:#898989;margin-top:2px}.bot-state{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#c9c9c9;margin-top:9px}.bot-task{font-size:12px;font-weight:800;line-height:1.4;margin-top:6px}.bot-detail{font-size:10px;color:#959595;line-height:1.45;margin-top:7px}.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:9px;color:#9b9b9b;letter-spacing:.08em;text-transform:uppercase}.legend span{display:flex;align-items:center;gap:6px}.legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.platform-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.platform-card{border:1px solid var(--line);border-radius:20px;background:#0a0a0a;padding:15px}.platform-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.platform-name{font-size:17px;font-weight:900}.muted{font-size:10px;color:#8f8f8f}.big{font-size:27px;font-weight:900;margin:14px 0 4px}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.progress{height:8px;background:#1c1c1c;border-radius:999px;overflow:hidden;margin:7px 0}.progress i{display:block;height:100%;background:#fff;border-radius:999px}.metric{margin-top:13px;padding-top:12px;border-top:1px solid var(--line)}.data-missing{color:#ecd174;font-size:10px;font-weight:900;margin-top:7px}.note{font-size:10px;color:#909090;line-height:1.45;margin-top:7px}
+.tabs{display:flex;gap:7px;overflow:auto;scrollbar-width:none;margin:16px 0 12px;padding-bottom:4px}.tabs::-webkit-scrollbar{display:none}.tabs button{border:1px solid var(--line2);background:#090909;color:#ababab;border-radius:999px;padding:10px 13px;font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;cursor:pointer}.tabs button.active{background:#fff;color:#000;border-color:#fff}.tab-card{border:1px solid var(--line);border-radius:22px;background:#0b0b0b;padding:18px}.activity-item{padding:11px 0;border-bottom:1px solid #222;font-size:12px;line-height:1.45}.activity-item b{margin-right:7px;font-size:10px}.decision-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.decision{border:1px solid #282828;border-radius:14px;padding:12px;background:#0e0e0e;font-size:11px;line-height:1.4}.decision b{display:block;font-size:9px;letter-spacing:.11em;text-transform:uppercase;margin-bottom:5px}.headline{font-size:28px;line-height:1.08;margin:4px 0 17px}.post-now{border:1px solid #262626;border-radius:14px;padding:12px;margin-bottom:8px}.post-now b{font-size:11px}.post-now p{font-size:11px;color:#9c9c9c;line-height:1.45;margin:5px 0 0}
+.detail-page{max-width:1060px;margin:0 auto;padding:20px 0 50px}.back-link{display:inline-flex;align-items:center;gap:7px;color:#c6c6c6;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px}.detail-hero{border:1px solid var(--line);border-radius:28px;background:linear-gradient(180deg,#111,#080808);padding:22px;box-shadow:var(--shadow)}.detail-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.detail-company{font-size:38px;margin:4px 0 7px}.detail-category{font-size:10px;letter-spacing:.13em;color:#b7b7b7;text-transform:uppercase;font-weight:900}.detail-fit{border:1px solid #414141;border-radius:20px;padding:12px 16px;text-align:center;min-width:110px}.detail-fit strong{display:block;font-size:28px}.detail-fit span{font-size:8px;letter-spacing:.1em;color:#939393;text-transform:uppercase}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.detail-box{border:1px solid var(--line);border-radius:18px;background:#0a0a0a;padding:15px}.detail-box h3{font-size:11px;letter-spacing:.11em;text-transform:uppercase;margin:0 0 9px;color:#c7c7c7}.detail-box p{margin:0;color:#d0d0d0;font-size:12px;line-height:1.55}.action-row{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.action-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #444;border-radius:999px;background:#fff;color:#000;padding:11px 15px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.action-btn.secondary{background:#0b0b0b;color:#fff}.email-template{white-space:pre-wrap;border:1px solid #2d2d2d;border-radius:16px;background:#050505;padding:15px;color:#ddd;font-size:12px;line-height:1.55;margin-top:9px}.copy-note{font-size:9px;color:#898989;margin-top:7px}
+@media(max-width:1100px){.opp-categories,.analysis-grid{grid-template-columns:1fr}.trend-grid{grid-template-columns:1fr}.workflow-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.platform-grid{grid-template-columns:1fr}.decision-grid{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.shell{padding:12px 12px 32px}.top-strip{align-items:flex-start}.hero{padding:16px 14px 0;border-radius:24px}.hero-logo{width:min(680px,92vw)}.hero-sub{font-size:12px}.hero-art-wrap{min-height:160px}.speech{position:static;max-width:none;margin:8px 0}.speech:after{display:none}.section-head{align-items:flex-start;flex-direction:column}.section-note{text-align:left}.section-head h2{font-size:23px}.workflow-grid{grid-template-columns:1fr}.detail-top{flex-direction:column}.detail-company{font-size:31px}.detail-fit{width:100%;display:flex;justify-content:space-between;align-items:center}.detail-fit strong{font-size:23px}.action-btn{width:100%}}
 </style>
 </head>
 <body>
-<div class="shell">
+<div id="normal-page" class="shell">
   <div class="top-strip">
-    <div class="strip-left">
-      <span>Down The Line War Room</span>
-      <span>Content Intelligence</span>
-    </div>
-    <div class="strip-right">
-      <span class="chip"><span class="dot"></span> 10/10 verified workers</span>
-    </div>
+    <div class="strip-group"><span>Down The Line War Room</span><span>Content Intelligence</span></div>
+    <div class="strip-group"><span class="chip"><span class="dot-white"></span> 10 workers online</span></div>
   </div>
 
   <section class="hero">
     <div class="hero-inner">
       <div class="hero-kicker">content intelligence · growth · opportunities</div>
       <img class="hero-logo" src="/logo.png" alt="Down The Line" />
-      <p class="hero-sub">Ten independent specialists watch, analyze and debate what matters for Down The Line across YouTube, TikTok and Instagram — all from one cleaner command center.</p>
-      <div class="hero-art-wrap">
-        <div id="hero-bubbles"></div>
-        <img class="hero-art" src="/hero-workers.png" alt="Black and white worker bots at desks" />
-      </div>
+      <p class="hero-sub">One command center for opportunities, live trend intelligence, the last 30-minute analysis cycle, and exactly what every DTL worker is doing.</p>
+      <div class="hero-art-wrap"><div id="hero-bubbles"></div><img class="hero-art" src="/hero-workers.png" alt="DTL worker bots at desks" /></div>
     </div>
   </section>
 
-  <section id="platforms" class="platform-grid"></section>
+  <section class="section section-card" id="opportunity-home">
+    <div class="section-head"><div><div class="section-eyebrow">Priority #1</div><h2>Opportunities</h2></div><div class="section-note">The first thing to check: products we can review, brands worth pitching for sponsorship, and affiliate programs that actually fit DTL.</div></div>
+    <div class="opp-categories" id="opportunity-categories"></div>
+  </section>
 
-  <nav class="tabs" id="tabs">
-    <button class="active" data-view="command">COMMAND</button>
-    <button data-view="agents">AGENTS</button>
-    <button data-view="meeting">MEETING ROOM</button>
-    <button data-view="opportunities">OPPORTUNITIES</button>
-    <button data-view="gameplan">GAME PLAN</button>
-    <button data-view="activity">ACTIVITY</button>
-  </nav>
+  <section class="section section-card">
+    <div class="section-head"><div><div class="section-eyebrow">Live Discovery</div><h2>Trending Hashtags + Keywords</h2></div><div class="section-note" id="trend-update">Auto-refreshing from the latest stored trend scan.</div></div>
+    <div class="trend-grid"><div class="trend-card"><div class="trend-title"><b>Top 5 Current Hashtags</b><span class="refresh-tag">Views / momentum</span></div><div class="trend-list" id="hashtag-list"></div><div class="source-line" id="hashtag-source"></div></div><div class="trend-card"><div class="trend-title"><b>Top 5 Rising Keywords</b><span class="refresh-tag">Search growth</span></div><div class="trend-list" id="keyword-list"></div><div class="source-line" id="keyword-source"></div></div></div>
+  </section>
 
-  <main id="view"><section class="card"><div class="section-title">WAR ROOM</div><h2>Loading DTL command center…</h2><p class="note">Connecting to agent state.</p></section></main>
+  <section class="section section-card">
+    <div class="section-head"><div><div class="section-eyebrow">Rolling 30-Minute Review</div><h2>What the Bots Just Learned</h2></div><div class="section-note" id="analysis-window"></div></div>
+    <div class="analysis-grid" id="analysis-grid"></div>
+  </section>
+
+  <section class="section section-card">
+    <div class="section-head"><div><div class="section-eyebrow">Current Workflow</div><h2>Worker Floor</h2></div><div class="legend"><span><i style="background:var(--green);box-shadow:0 0 9px #53ff8b"></i>Watching video</span><span><i style="background:var(--blue);box-shadow:0 0 9px #58a6ff"></i>Creating analysis</span><span><i style="background:var(--red);box-shadow:0 0 9px #ff5d68"></i>Not working</span></div></div>
+    <div class="workflow-grid" id="workflow-grid"></div>
+  </section>
+
+  <section class="section section-card">
+    <div class="section-head"><div><div class="section-eyebrow">Monetization Tracker</div><h2>Platform Goals</h2></div><div class="section-note">Private metrics remain DATA NOT CONNECTED unless an authorized analytics source supplies them.</div></div>
+    <div class="platform-grid" id="platforms"></div>
+  </section>
+
+  <nav class="tabs" id="tabs"><button class="active" data-view="meeting">MEETING ROOM</button><button data-view="gameplan">GAME PLAN</button><button data-view="activity">ACTIVITY</button></nav>
+  <main id="tab-view"></main>
 </div>
+<div id="detail-root"></div>
 <script>
-let STATE = null;
-let current = 'command';
-const esc = s => String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const pct = (v,t) => v == null || !t ? 0 : Math.max(0, Math.min(100, Math.round(v / t * 100)));
-const formatDate = value => {
-  if (!value) return '—';
-  const d = new Date(value);
-  return isNaN(d) ? esc(value) : d.toLocaleString();
-};
-async function load(){
-  try {
-    const r = await fetch('/api/state', { cache:'no-store' });
-    if(!r.ok) throw new Error('API ' + r.status);
-    const next = await r.json();
-    if(!next || !Array.isArray(next.platforms) || !Array.isArray(next.agents)) throw new Error('Invalid state payload');
-    STATE = next;
-    renderPlatforms();
-    renderHeroBubbles();
-    render();
-  } catch(err) {
-    console.error('War Room load failed', err);
-    const v = document.querySelector('#view');
-    if(v) v.innerHTML = '<section class="card"><div class="section-title">WAR ROOM STATUS</div><h2>Dashboard is online</h2><p class="note">The live data endpoint is reconnecting. The page will retry automatically.</p><div class="pitch">' + esc(err.message) + '</div></section>';
-  }
-}
-function renderHeroBubbles(){
-  const el = document.querySelector('#hero-bubbles');
-  if(!el || !STATE) return;
-  const picks = [STATE.agents[0], STATE.agents[3], STATE.agents[6], STATE.agents[9]].filter(Boolean);
-  el.innerHTML = picks.map((a, i) => '<div class="speech s' + (i+1) + '"><b>' + esc(a.name) + '</b><p>' + esc(a.currentlyDoing || a.current || a.finding || 'Working the next assignment.') + '</p></div>').join('');
-}
-function renderPlatforms(){
-  document.querySelector('#platforms').innerHTML = STATE.platforms.map(p => '
-    <article class="card">
-      <div class="platform-head">
-        <div>
-          <div class="platform-name">' + esc(p.name) + '</div>
-          <div class="handle">' + esc(p.handle) + '</div>
-        </div>
-        <span class="chip">' + esc(p.status) + '</span>
-      </div>
-      <div class="big">' + Number(p.followers).toLocaleString() + '</div>
-      <div class="row"><span class="muted">Followers / subscribers</span><b>' + Number(p.followerTarget).toLocaleString() + '</b></div>
-      <div class="progress"><i style="width:' + pct(p.followers,p.followerTarget) + '%"></i></div>
-      <div class="metric">
-        <div class="row"><span class="muted">' + esc(p.metricLabel) + '</span><b>' + (p.metricValue==null?'—':Number(p.metricValue).toLocaleString()) + ' / ' + Number(p.metricTarget).toLocaleString() + '</b></div>
-        <div class="progress"><i style="width:' + pct(p.metricValue,p.metricTarget) + '%"></i></div>
-        ' + (p.metricValue==null?'<div class="data-missing">DATA NOT CONNECTED</div>':'') + '
-        <div class="note">' + esc(p.note) + '</div>
-      </div>
-    </article>').join('');
-}
-function summaryTiles(){
-  const opportunities = Array.isArray(STATE.opportunities) ? STATE.opportunities.filter(x => x.id !== 'seed-1').length : 0;
-  const activityCount = Array.isArray(STATE.activity) ? STATE.activity.length : 0;
-  return '<div class="summary-grid">'
-    + '<div class="summary-tile"><div class="summary-label">Last refresh</div><div class="summary-value">' + esc(formatDate(STATE.meta?.updatedAt)) + '</div><div class="summary-sub">Latest state synced into the command center.</div></div>'
-    + '<div class="summary-tile"><div class="summary-label">Active specialists</div><div class="summary-value">' + (Array.isArray(STATE.agents)?STATE.agents.length:0) + '</div><div class="summary-sub">Independent workers analyzing content, packaging and growth.</div></div>'
-    + '<div class="summary-tile"><div class="summary-label">Open opportunities</div><div class="summary-value">' + opportunities + '</div><div class="summary-sub">Verified revenue leads currently stored in the pipeline.</div></div>'
-    + '<div class="summary-tile"><div class="summary-label">Recent activity</div><div class="summary-value">' + activityCount + '</div><div class="summary-sub">Latest events, findings and state changes from the workers.</div></div>'
-    + '</div>';
-}
-function agentCards(){
-  return '<div class="agent-grid">' + STATE.agents.map(a => {
-    const type = a.taskType || a.status || 'STANDBY';
-    const target = a.targetTitle || a.videoTitle || a.target || a.current || 'Awaiting assignment';
-    const targetKind = a.targetKind || ((a.videoTitle || a.videoUrl) ? 'VIDEO' : 'TARGET');
-    const platform = a.platform || a.targetPlatform || 'Cross-platform';
-    const detail = a.currentlyDoing || a.current || 'Waiting for the next assignment.';
-    const stamp = a.taskUpdatedAt || a.updatedAt || STATE.meta?.updatedAt || '';
-    return '<div class="agent">'
-      + '<div class="agent-top"><div class="avatar">' + esc(a.initials) + '</div><div class="agent-id"><div class="status">' + esc(a.status) + '</div><h3>' + esc(a.name) + '</h3><div class="muted">' + esc(a.role) + '</div></div></div>'
-      + '<div class="current-task"><div class="task-head"><span class="task-label">Currently Doing</span><span class="task-type">' + esc(type) + '</span></div><div class="task-target">' + esc(targetKind) + ': ' + esc(target) + '</div><div class="task-meta">' + esc(platform) + '</div><div class="task-detail">' + esc(detail) + '</div>' + (stamp ? '<div class="task-time">Last task update: ' + esc(formatDate(stamp)) + '</div>' : '') + '</div>'
-      + '<p class="finding">' + esc(a.finding || '') + '</p><div class="row"><span class="muted">Confidence</span><b>' + esc(a.confidence) + '%</b></div></div>';
-  }).join('') + '</div>';
-}
-function activity(){
-  if(!STATE.activity || !STATE.activity.length) return '<div class="empty-state">No live activity yet.</div>';
-  return STATE.activity.map(x => '<div class="activity-item"><b>' + esc(x.agent) + '</b>' + esc(x.text) + ' <span class="muted">· ' + esc(x.time) + '</span></div>').join('');
-}
-function decision(){
-  const d = STATE.meeting?.decision || {};
-  return '<div class="decision-grid">' + [['STOP',d.stop],['START',d.start],['KEEP',d.keep],['TEST',d.test],['DO NOW',d.immediate]].map(x => '<div class="decision"><b>' + x[0] + '</b>' + esc(x[1] || '—') + '</div>').join('') + '</div>';
-}
-function command(){
-  return '<div class="grid">'
-    + '<section class="card span12"><div class="section-title">Command Summary</div>' + summaryTiles() + '</section>'
-    + '<section class="card span8"><div class="section-title">Ten-Agent Floor</div>' + agentCards() + '</section>'
-    + '<section class="card span4"><div class="section-title">Live Activity</div>' + activity() + '</section>'
-    + '<section class="card span6"><div class="section-title">Current Game Plan</div><div class="headline">' + esc(STATE.gamePlan?.headline || 'No headline') + '</div>' + (STATE.gamePlan?.postNow || []).map(x => '<div class="post-now"><b>' + esc(x.platform) + '</b><div class="note">' + esc(x.action) + '</div></div>').join('') + '</section>'
-    + '<section class="card span6"><div class="section-title">Meeting Decision</div>' + decision() + '</section>'
-    + '</div>';
-}
-function meeting(){
-  const pos = [[4,7],[38,2],[72,7],[80,35],[72,68],[38,78],[4,68],[-2,35],[21,19],[58,19]];
-  return '<section class="meeting-stage"><div class="table-core"><div><div class="section-title" style="margin-bottom:8px">DTL Meeting Room</div><h2 style="margin:0 0 8px">' + esc(STATE.meeting?.title || 'Strategy Meeting') + '</h2><div class="muted">' + esc(STATE.meeting?.status || 'Ready') + '</div></div></div>' + STATE.agents.map((a,i)=>{const msg=(STATE.meeting?.messages||[]).find(m=>m.agent===a.name);return '<div class="meeting-agent" style="left:' + pos[i][0] + '%;top:' + pos[i][1] + '%"><div class="avatar">' + esc(a.initials) + '</div><b>' + esc(a.name) + '</b>' + (msg?'<div class="bubble">' + esc(msg.text) + '</div>':'') + '</div>'}).join('') + '</section><section class="card" style="margin-top:14px"><div class="section-title">Meeting Outcome</div>' + decision() + '</section>';
-}
-function opportunities(){
-  const items = Array.isArray(STATE.opportunities) ? STATE.opportunities : [];
-  return '<section class="card"><div class="row"><div><div class="section-title">Revenue Pipeline</div><h2 style="margin:0 0 6px">Opportunity Bot</h2><div class="note">Paid first, affiliate second, product seeding third.</div></div><span class="chip">Revenue Scout</span></div>' + items.map(o => '<div class="opp"><div><h3 style="margin:0 0 8px">' + esc(o.brand) + '</h3><span class="chip">' + esc(o.type) + '</span><p class="note">' + esc(o.why) + '</p><div class="pitch">' + esc(o.pitch) + '</div></div><div><div class="muted">Fit</div><div class="fit">' + esc(o.fit) + '%</div></div><div><div class="muted">Compensation</div><b>' + esc(o.compensation) + '</b><div class="note">' + esc(o.contact) + '</div></div><div><div class="muted">Status</div><span class="chip">' + esc(o.status) + '</span><div class="note">' + esc(o.source) + '</div></div></div>').join('') + '</section>';
-}
-function gameplan(){
-  return '<section class="card"><div class="section-title">If DTL were posting today</div><div class="headline">' + esc(STATE.gamePlan?.headline || 'No game plan yet.') + '</div>' + (STATE.gamePlan?.postNow || []).map(x => '<div class="post-now"><b>' + esc(x.platform) + '</b><p class="note">' + esc(x.action) + '</p></div>').join('') + '</section>';
-}
-function render(){
-  const v = document.querySelector('#view');
-  if(current==='command') v.innerHTML = command();
-  if(current==='agents') v.innerHTML = '<section class="card"><div class="section-title">Individual Specialists</div>' + agentCards() + '</section>';
-  if(current==='meeting') v.innerHTML = meeting();
-  if(current==='opportunities') v.innerHTML = opportunities();
-  if(current==='gameplan') v.innerHTML = gameplan();
-  if(current==='activity') v.innerHTML = '<section class="card"><div class="section-title">Activity Log</div>' + activity() + '</section>';
-}
-document.querySelector('#tabs').addEventListener('click',e=>{
-  if(!e.target.dataset.view) return;
-  current = e.target.dataset.view;
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b === e.target));
-  render();
-});
-load();
-setInterval(load, 30000);
+let STATE=null; let current='meeting';
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const pct=(v,t)=>v==null||!t?0:Math.max(0,Math.min(100,Math.round(v/t*100)));
+const fmtDate=v=>{if(!v)return 'Not updated yet';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString()};
+const inferCategory=o=>{const s=((o.category||'')+' '+(o.type||'')+' '+(o.compensation||'')).toLowerCase();if(s.includes('sponsor')||s.includes('paid'))return 'sponsor';if(s.includes('affiliate')||s.includes('commission'))return 'affiliate';return 'free_product'};
+const categoryLabels={free_product:'FREE PRODUCTS FOR REVIEW',sponsor:'POTENTIAL SPONSORS',affiliate:'POTENTIAL AFFILIATES'};
+function botState(a){const s=((a.workState||a.status||'')+' '+(a.taskType||'')).toLowerCase();if(s.includes('watch'))return ['green','WATCHING VIDEO'];if(s.includes('analy')||s.includes('creat')||s.includes('research')||s.includes('track')||s.includes('scout')||s.includes('test'))return ['blue','CREATING ANALYSIS'];return ['red','NOT WORKING'];}
+async function load(){try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw new Error('API '+r.status);STATE=await r.json();if(location.pathname.startsWith('/opportunity/')){renderOpportunityDetail();return}renderHome()}catch(e){document.querySelector('#tab-view').innerHTML='<section class="tab-card"><h2>Dashboard online — data reconnecting</h2><p>'+esc(e.message)+'</p></section>'}}
+function renderHome(){renderHero();renderOpportunities();renderTrends();renderAnalysis();renderWorkflow();renderPlatforms();renderTab()}
+function renderHero(){const el=document.querySelector('#hero-bubbles');const picks=[STATE.agents?.[0],STATE.agents?.[3],STATE.agents?.[6],STATE.agents?.[9]].filter(Boolean);el.innerHTML=picks.map((a,i)=>'<div class="speech s'+(i+1)+'"><b>'+esc(a.name)+'</b><p>'+esc(a.currentlyDoing||a.current||a.finding||'Working the next assignment.')+'</p></div>').join('')}
+function renderOpportunities(){const root=document.querySelector('#opportunity-categories');const all=(STATE.opportunities||[]).filter(o=>o.id!=='seed-1');root.innerHTML=['free_product','sponsor','affiliate'].map(cat=>{const items=all.filter(o=>inferCategory(o)===cat).sort((a,b)=>(b.fit||0)-(a.fit||0)).slice(0,5);return '<div class="opp-category"><div class="opp-category-title"><b>'+categoryLabels[cat]+'</b><span>'+items.length+' leads</span></div>'+(items.length?items.map(o=>'<a class="opp-row" href="/opportunity/'+encodeURIComponent(o.id)+'"><div><div class="opp-name">'+esc(o.brand)+'</div><div class="opp-desc">'+esc(o.shortDescription||o.partnership||o.why||'Open opportunity')+'</div></div><div class="fit-badge"><small>Fit</small>'+esc(o.fit||'—')+'%</div></a>').join(''):'<div class="empty">No verified lead in this category yet.</div>')+'</div>'}).join('')}
+function renderTrends(){const t=STATE.trends||{};document.querySelector('#trend-update').textContent='Last trend update: '+fmtDate(t.lastUpdated);const hash=(t.hashtags||[]).slice(0,5),keys=(t.keywords||[]).slice(0,5);document.querySelector('#hashtag-list').innerHTML=hash.length?hash.map((x,i)=>'<div class="trend-item"><div class="trend-rank">'+(i+1)+'</div><div><div class="trend-term">'+esc(x.term||x.hashtag)+'</div><div class="trend-meta">'+esc(x.context||x.category||'')+'</div></div><div class="trend-score">'+esc(x.metric||x.views||x.score||'')+'</div></div>').join(''):'<div class="empty">Waiting for the next hashtag scan.</div>';document.querySelector('#keyword-list').innerHTML=keys.length?keys.map((x,i)=>'<div class="trend-item"><div class="trend-rank">'+(i+1)+'</div><div><div class="trend-term">'+esc(x.term||x.keyword)+'</div><div class="trend-meta">'+esc(x.context||x.category||'')+'</div></div><div class="trend-score">'+esc(x.metric||x.growth||x.score||'')+'</div></div>').join(''):'<div class="empty">Waiting for the next keyword scan.</div>';document.querySelector('#hashtag-source').textContent=t.hashtagSource||'Source appears here after the worker verifies a trend snapshot.';document.querySelector('#keyword-source').textContent=t.keywordSource||'Source appears here after the worker verifies keyword momentum.'}
+function renderAnalysis(){const a=STATE.analysis30m||{};document.querySelector('#analysis-window').textContent=(a.window||'Last 30 minutes')+' · Updated '+fmtDate(a.updatedAt);const boxes=[['ANALYZED',a.analyzed,''],['DOING WELL',a.doingWell,'good'],['DOING WRONG',a.doingWrong,'bad'],['HOW TO IMPROVE',a.improve,'improve']];document.querySelector('#analysis-grid').innerHTML=boxes.map(x=>'<div class="analysis-box '+x[2]+'"><b>'+x[0]+'</b><p>'+esc(x[1]||'Waiting for the next completed worker cycle.')+'</p></div>').join('')}
+function renderWorkflow(){document.querySelector('#workflow-grid').innerHTML=(STATE.agents||[]).map(a=>{const st=botState(a);const target=a.targetTitle||a.videoTitle||a.target||a.current||'Awaiting assignment';const detail=a.currentlyDoing||a.finding||a.current||'';return '<div class="bot-card"><div class="bot-head"><span class="bot-status-dot '+st[0]+'"></span><div><div class="bot-name">'+esc(a.name)+'</div><div class="bot-role">'+esc(a.role)+'</div></div></div><div class="bot-state">'+st[1]+'</div><div class="bot-task">'+esc(target)+'</div><div class="bot-detail">'+esc(detail)+'</div></div>'}).join('')}
+function renderPlatforms(){document.querySelector('#platforms').innerHTML=(STATE.platforms||[]).map(p=>'<article class="platform-card"><div class="platform-head"><div><div class="platform-name">'+esc(p.name)+'</div><div class="muted">'+esc(p.handle)+'</div></div><span class="chip">'+esc(p.status)+'</span></div><div class="big">'+Number(p.followers||0).toLocaleString()+'</div><div class="row"><span class="muted">Followers / subscribers</span><b>'+Number(p.followerTarget||0).toLocaleString()+'</b></div><div class="progress"><i style="width:'+pct(p.followers,p.followerTarget)+'%"></i></div><div class="metric"><div class="row"><span class="muted">'+esc(p.metricLabel)+'</span><b>'+(p.metricValue==null?'—':Number(p.metricValue).toLocaleString())+' / '+Number(p.metricTarget||0).toLocaleString()+'</b></div><div class="progress"><i style="width:'+pct(p.metricValue,p.metricTarget)+'%"></i></div>'+(p.metricValue==null?'<div class="data-missing">DATA NOT CONNECTED</div>':'')+'<div class="note">'+esc(p.note)+'</div></div></article>').join('')}
+function decision(){const d=STATE.meeting?.decision||{};return '<div class="decision-grid">'+[['STOP',d.stop],['START',d.start],['KEEP',d.keep],['TEST',d.test],['DO NOW',d.immediate]].map(x=>'<div class="decision"><b>'+x[0]+'</b>'+esc(x[1]||'—')+'</div>').join('')+'</div>'}
+function renderTab(){const v=document.querySelector('#tab-view');if(current==='meeting')v.innerHTML='<section class="tab-card"><div class="section-eyebrow">Meeting Room</div><h2>'+esc(STATE.meeting?.title||'Strategy Meeting')+'</h2><p class="note">'+esc(STATE.meeting?.status||'')+'</p>'+decision()+'</section>';if(current==='gameplan')v.innerHTML='<section class="tab-card"><div class="section-eyebrow">Game Plan</div><div class="headline">'+esc(STATE.gamePlan?.headline||'No plan yet')+'</div>'+(STATE.gamePlan?.postNow||[]).map(x=>'<div class="post-now"><b>'+esc(x.platform)+'</b><p>'+esc(x.action)+'</p></div>').join('')+'</section>';if(current==='activity')v.innerHTML='<section class="tab-card"><div class="section-eyebrow">Activity</div><h2>Latest Worker Events</h2>'+((STATE.activity||[]).map(x=>'<div class="activity-item"><b>'+esc(x.agent)+'</b>'+esc(x.text)+' <span class="muted">· '+esc(x.time)+'</span></div>').join('')||'<div class="empty">No activity yet.</div>')+'</section>'}
+function renderOpportunityDetail(){document.querySelector('#normal-page').style.display='none';const id=decodeURIComponent(location.pathname.split('/').pop());const o=(STATE.opportunities||[]).find(x=>String(x.id)===id);const root=document.querySelector('#detail-root');if(!o){root.innerHTML='<div class="detail-page"><a class="back-link" href="/">← Back to War Room</a><div class="detail-hero"><h1>Opportunity not found</h1></div></div>';return}const cat=inferCategory(o);const url=o.productUrl||o.website||o.sourceUrl||'#';const contactUrl=o.contactUrl||o.website||o.sourceUrl||'#';root.innerHTML='<div class="detail-page"><a class="back-link" href="/">← Back to War Room</a><section class="detail-hero"><div class="detail-top"><div><div class="detail-category">'+esc(categoryLabels[cat])+'</div><h1 class="detail-company">'+esc(o.brand)+'</h1><p class="note">'+esc(o.shortDescription||o.why||'')+'</p></div><div class="detail-fit"><span>DTL Fit</span><strong>'+esc(o.fit||'—')+'%</strong></div></div><div class="action-row">'+(url!=='#'?'<a class="action-btn" target="_blank" rel="noopener" href="'+esc(url)+'">Open Product / Website</a>':'')+(contactUrl!=='#'?'<a class="action-btn secondary" target="_blank" rel="noopener" href="'+esc(contactUrl)+'">Contact / Apply</a>':'')+'</div></section><div class="detail-grid"><section class="detail-box"><h3>What the partnership could look like</h3><p>'+esc(o.partnership||o.why||'')+'</p></section><section class="detail-box"><h3>Contact route</h3><p>'+esc(o.contactMethod||o.contact||'Official application/contact route only.')+'</p></section><section class="detail-box"><h3>Compensation / terms</h3><p>'+esc(o.compensation||'Terms not publicly verified yet.')+'</p></section><section class="detail-box"><h3>Why DTL fits</h3><p>'+esc(o.fitReason||o.why||'')+'</p></section></div><section class="detail-box" style="margin-top:12px"><div class="row"><h3 style="margin:0">Pre-typed outreach email</h3><button class="action-btn secondary" id="copy-email">Copy Email</button></div><div class="email-template" id="email-template">'+esc(o.emailTemplate||'No email template stored yet.')+'</div><div class="copy-note">Use verified DTL metrics only. Do not promise a positive review or guaranteed coverage.</div></section></div>';setTimeout(()=>{const b=document.querySelector('#copy-email');if(b)b.onclick=()=>{navigator.clipboard.writeText(o.emailTemplate||'');b.textContent='Copied'}})}
+document.querySelector('#tabs').addEventListener('click',e=>{if(!e.target.dataset.view)return;current=e.target.dataset.view;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b===e.target));renderTab()});
+load();setInterval(()=>{if(!location.pathname.startsWith('/opportunity/'))load()},30000);
 </script>
 </body>
 </html>
