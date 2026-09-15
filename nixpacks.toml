@@ -1,11 +1,12 @@
 [phases.setup]
-nixPkgs = ["...", "ffmpeg", "python312", "python312Packages.pip", "python312Packages.virtualenv", "git"]
+nixPkgs = ["...", "ffmpeg", "python312", "git"]
 
 [phases.install]
 cmds = [
   "npm install --omit=dev",
-  "python3 -m virtualenv .venv",
-  "./.venv/bin/pip install --upgrade pip yt-dlp yt-dlp-ejs bgutil-ytdlp-pot-provider==2.0.0",
+  "python -m venv --copies .venv",
+  "./.venv/bin/pip install --upgrade pip",
+  "./.venv/bin/pip install -U \"yt-dlp[default]\" bgutil-ytdlp-pot-provider==2.0.0",
   "rm -rf bgutil-ytdlp-pot-provider && git clone --depth 1 --branch 2.0.0 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git bgutil-ytdlp-pot-provider",
   "cd bgutil-ytdlp-pot-provider/server && npm ci && npx tsc"
 ]

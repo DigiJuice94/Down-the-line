@@ -304,13 +304,14 @@ function runCommand(command, args = [], options = {}) {
 async function commandExists(name){try{if(String(name||'').includes('/')&&fs.existsSync(name))return true;await runCommand('sh',['-lc',`command -v ${name}`],{timeoutMs:5000});return true}catch(_){return false}}
 const LOCAL_YTDLP=path.join(process.cwd(),'.venv','bin','yt-dlp');
 const USER_YTDLP=path.join(os.homedir(),'.local','bin','yt-dlp');
-const POT_SCRIPT=path.join(process.cwd(),'bgutil-ytdlp-pot-provider','server','build','generate_once.js');
+const POT_SERVER_HOME=path.join(process.cwd(),'bgutil-ytdlp-pot-provider','server');
+const POT_SCRIPT=path.join(POT_SERVER_HOME,'build','generate_once.js');
 const GENERATED_COOKIE_FILE=path.join(os.tmpdir(),'dtl-youtube-cookies.txt');
 let generatedCookiesReady=false;
 function ytdlpBin(){return fs.existsSync(LOCAL_YTDLP)?LOCAL_YTDLP:(fs.existsSync(USER_YTDLP)?USER_YTDLP:'yt-dlp')}
 function ensureGeneratedCookieFile(){if(generatedCookiesReady&&fs.existsSync(GENERATED_COOKIE_FILE))return GENERATED_COOKIE_FILE;const b64=String(process.env.DTL_YOUTUBE_COOKIES_B64||'').trim();if(!b64)return null;try{const text=Buffer.from(b64,'base64').toString('utf8');if(!/^# (?:HTTP|Netscape) Cookie File/m.test(text))throw new Error('cookie file is not Netscape format');fs.writeFileSync(GENERATED_COOKIE_FILE,text,{mode:0o600});generatedCookiesReady=true;return GENERATED_COOKIE_FILE}catch(err){console.error('DTL_YOUTUBE_COOKIES_B64 could not be prepared:',err.message);return null}}
 function ytAuthArgs(){const out=[];const explicit=String(process.env.DTL_COOKIES_FILE||'').trim();const generated=ensureGeneratedCookieFile();const cookieFile=explicit&&fs.existsSync(explicit)?explicit:generated;if(cookieFile)out.push('--cookies',cookieFile);return out}
-function ytCommonArgs(){const out=['--sleep-requests','1','--retries','2','--fragment-retries','2','--retry-sleep','http:2'];if(fs.existsSync(POT_SCRIPT)){out.push('--js-runtimes','node','--extractor-args','youtube:player_client=mweb','--extractor-args',`youtubepot-bgutilscript:script_path=${POT_SCRIPT}`)}return out}
+function ytCommonArgs(){const out=['--sleep-requests','1','--retries','2','--fragment-retries','2','--retry-sleep','http:2'];if(fs.existsSync(POT_SERVER_HOME)){out.push('--js-runtimes','node','--extractor-args','youtube:player-client=mweb','--extractor-args',`youtubepot-bgutilscript:server_home=${POT_SERVER_HOME}`)}return out}
 function isYoutubeBotChallenge(err){return /sign in to confirm you(?:'|’)re not a bot|confirm you(?:'|’)re not a bot|bot check|captcha/i.test(String(err?.message||err||''))}
 function safeRunId(id){return `${String(id).toUpperCase()}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`}
 function normWords(text){return String(text||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).filter(w=>w.length>2)}
@@ -355,7 +356,7 @@ async function runCoreWorkerCycle(trigger='scheduled'){
   const started=new Date();
   try{
     const ybin=ytdlpBin();
-    const tools={ytDlp:await commandExists(ybin),ffmpeg:await commandExists('ffmpeg'),ffprobe:await commandExists('ffprobe'),poTokenProvider:fs.existsSync(POT_SCRIPT),cookies:Boolean((process.env.DTL_COOKIES_FILE&&fs.existsSync(process.env.DTL_COOKIES_FILE))||process.env.DTL_YOUTUBE_COOKIES_B64)};
+    const tools={ytDlp:await commandExists(ybin),ffmpeg:await commandExists('ffmpeg'),ffprobe:await commandExists('ffprobe'),poTokenProvider:fs.existsSync(POT_SERVER_HOME),cookies:Boolean((process.env.DTL_COOKIES_FILE&&fs.existsSync(process.env.DTL_COOKIES_FILE))||process.env.DTL_YOUTUBE_COOKIES_B64)};
     state.workerEngine={...(state.workerEngine||{}),status:'WORKING',currentAction:'Discovering DTL uploads and assigning real work. One blocked platform will no longer knock every worker offline.',lastStartedAt:started.toISOString(),nextCycleAt:new Date(started.getTime()+CORE_WORKER_INTERVAL_MS).toISOString(),tools,lastError:null};
     recentActivity(state,'SYSTEM',`Started ${trigger} autonomous nine-agent worker cycle.`);
     await saveState(state);
