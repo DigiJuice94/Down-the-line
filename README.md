@@ -1,15 +1,34 @@
-# DTL War Room v1.3
+# DTL War Room v1.7 — Real autonomous workers (cumulative)
 
-This build keeps the mobile War Room and specific DTL-video assignments, and adds a real server-side Opportunity scanner.
+This build includes **everything from v1.4/v1.5**: direct Opportunity verification, news/article rejection, public contact-email discovery, application routes, pre-written outreach emails, and proof-of-work enforcement. It adds the missing autonomous engines for the other nine specialists.
 
-## Opportunity Bot
-- Starts a public-source scan shortly after Railway boots.
-- Re-scans every 30 minutes by default.
-- Searches public web and Google News result feeds for creator sponsorships, affiliate programs, creator campaigns, product seeding, PR samples, food/beverage opportunities, gaming opportunities, and entertainment/podcast partnerships.
-- Stores source-linked lead signals, DTL fit score, scan time, source count, and scanner status.
-- Never invents compensation or contacts: those remain marked unverified until a public source confirms them.
-- Includes a **SCAN NOW** button on the Opportunities tab.
+## Real work now performed
 
-Optional: set `OPPORTUNITY_SCAN_INTERVAL_MINUTES` on Railway to change the default 30-minute cycle (minimum 10). No new variable is required.
+- **HOOK** downloads a bounded sample from a real DTL video, extracts captions when available, and runs FFmpeg scene/silence analysis on the opening.
+- **RETENTION** processes real media for scene-change cadence, silence/dead-air pockets, caption speech density, and long low-change stretches.
+- **CONTENT** analyzes the real source transcript/description for topic clarity and standalone context.
+- **PACKAGING** compares the real title/metadata with the opening transcript and source structure.
+- **PERFORMANCE** opens recent DTL posts and stores public performance snapshots so later cycles can compare changes.
+- **DISCOVERY** compares real posting-time, duration, and public-performance samples and labels small-sample findings as tests, not rules.
+- **ALGORITHM** opens official YouTube/TikTok/Meta guidance pages and records exactly which sources were reachable.
+- **COMPETITIVE** runs real public YouTube comparison searches based on the current DTL topic.
+- **GOAL** refreshes public channel metrics when exposed and checks official monetization guidance without inventing private watch hours.
+- **OPPORTUNITY** remains the v1.4 direct-opportunity scanner with verified routes and outreach drafts.
 
-Required root files for Railway remain `server.js`, `package.json`, and `railway.json`.
+A video specialist only claims real media processing when `yt-dlp` successfully acquires media and FFmpeg analyzes it. If a platform blocks Railway, the card reports **BLOCKED / RETRY SCHEDULED** instead of showing fake Watching activity. Every worker has a run ID, source URL, heartbeat, processed range/count, and evidence.
+
+## Railway
+
+Upload **every file** in this ZIP to the repository root. `nixpacks.toml` installs `yt-dlp` and FFmpeg automatically. No new variable is required. Existing `DATABASE_URL` and optional `INGEST_TOKEN` remain supported.
+
+Default schedules: nine-agent worker cycle every 20 minutes; Opportunity scan every 30 minutes. The dashboard also has **RUN ALL WORKERS NOW** and **SCAN NOW**.
+
+Optional only: `DTL_COOKIES_FILE` may point to a Netscape cookie file if TikTok/Instagram later require authenticated server-side access. A blocked platform is never reported as a successful run.
+
+
+## v1.7 continuous episode viewing
+Media workers now consume each assigned DTL video continuously from 0:00 through 10:00, or the full runtime when the video is shorter than ten minutes. The same acquired media analysis is shared between specialists assigned to the same episode so Hook/Packaging and Retention/Content do not redundantly acquire the same ten-minute window. Retention and Content use the full continuous transcript window, one-minute topic windows, scene changes, silence, pacing, and likely topic/segment transitions. Worker proof records the exact continuous range analyzed.
+
+
+## v1.8 mobile monochrome redesign
+Mobile-first black-and-white War Room: true black background, white text and controls, stronger DTL header lockup, and recognizable white bot faces with simple role-specific expressions. Continuous ten-minute viewing and all v1.7 worker functionality remain intact. Desktop refinement is intentionally deferred for a later pass.

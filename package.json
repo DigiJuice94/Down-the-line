@@ -1,8 +1,8 @@
 {
   "name": "dtl-war-room",
-  "version": "1.3.0",
+  "version": "1.8.0",
   "private": true,
-  "description": "Down The Line ten-agent social growth, monetization and live opportunity scanning war room",
+  "description": "Down The Line ten-agent war room with continuous ten-minute media workers, proof-of-work enforcement, and direct opportunity verification",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
