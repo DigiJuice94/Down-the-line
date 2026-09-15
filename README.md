@@ -1,3 +1,10 @@
-# DTL War Room v7
+# DTL War Room — One Folder
 
-Adds the actual Down The Line logo in the header and cleans up the overall black-and-white UI. Replace server.js or upload the four root files to GitHub and let Railway redeploy.
+Everything stays in this single folder. The Down The Line logo is now a normal `logo.png` file instead of a huge Base64 string inside `server.js`, which keeps Railway logs/code clean.
+
+Files:
+- server.js
+- package.json
+- railway.json
+- logo.png
+- README.md
