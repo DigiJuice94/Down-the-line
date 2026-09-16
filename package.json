@@ -1,14 +1,14 @@
 {
   "name": "dtl-war-room",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
-  "description": "Down The Line ten-agent social growth and monetization war room",
+  "description": "Down The Line War Room with self-healing real workers, live tracker sync, trend refresh, and opportunity scanning",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "express": "^5.1.0",

@@ -71,7 +71,7 @@ let STATE=null; let current='meeting';
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const pct=(v,t)=>v==null||!t?0:Math.max(0,Math.min(100,Math.round(v/t*100)));
 const fmtDate=v=>{if(!v)return 'Not updated yet';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString()};
-const inferCategory=o=>{const s=((o.category||'')+' '+(o.type||'')+' '+(o.compensation||'')).toLowerCase();if(s.includes('sponsor')||s.includes('paid'))return 'sponsor';if(s.includes('affiliate')||s.includes('commission'))return 'affiliate';return 'free_product'};
+const inferCategory=o=>{const explicit=String(o.category||'').toLowerCase();if(['free_product','sponsor','affiliate'].includes(explicit))return explicit;const s=((o.type||'')+' '+(o.compensation||'')+' '+(o.shortDescription||'')).toLowerCase();if(/sponsor|paid|paid campaign|paid partnership/.test(s))return 'sponsor';if(/free product|gifted|complimentary|sample|product box|product seeding|product testing/.test(s))return 'free_product';if(/affiliate|commission/.test(s))return 'affiliate';return 'free_product'};
 const categoryLabels={free_product:'FREE PRODUCTS FOR REVIEW',sponsor:'POTENTIAL SPONSORS',affiliate:'POTENTIAL AFFILIATES'};
 function ageMs(v){if(!v)return Infinity;const d=new Date(v);return isNaN(d)?Infinity:Date.now()-d.getTime()}
 function botState(a){

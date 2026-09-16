@@ -10,33 +10,76 @@ const HOST = '0.0.0.0';
 const PAGE = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
 
 const WORKER_BACKEND_PORT = Number(process.env.DTL_WORKER_BACKEND_PORT || 3101);
+const WORKER_BACKEND_URL = process.env.DTL_WORKER_BACKEND_URL || 'https://raw.githubusercontent.com/DigiJuice94/Down-the-line/a9d256ac1ea9893e419445237e280ea16b22efbb/server.js';
 let workerChild = null;
+let workerSyncTimer = null;
+let workerBackendAlive = false;
+let workerBackendLastSync = null;
+let workerBackendLastError = null;
 let shuttingDown = false;
 
-function startWorkerBackend(){
-  const workerFile = path.join(__dirname,'worker-backend.js');
-  if(!fs.existsSync(workerFile)){
-    console.error('worker-backend.js missing; real video workers cannot start.');
-    return;
-  }
-  if(workerChild && !workerChild.killed) return;
-  const env={...process.env,PORT:String(WORKER_BACKEND_PORT),DTL_WORKER_INTERVAL_MINUTES:String(process.env.DTL_WORKER_INTERVAL_MINUTES||10)};
-  workerChild=spawn(process.execPath,[workerFile],{cwd:__dirname,env,stdio:['ignore','inherit','inherit']});
-  console.log(`Real worker backend started on internal port ${WORKER_BACKEND_PORT}`);
-  workerChild.on('exit',(code,signal)=>{
-    console.log(`Real worker backend exited code=${code} signal=${signal}`);
-    workerChild=null;
-    if(!shuttingDown) setTimeout(startWorkerBackend,5000).unref();
-  });
+async function ensureWorkerBackendFile(){
+  const workerFile=path.join(__dirname,'worker-backend.js');
+  if(fs.existsSync(workerFile)&&fs.statSync(workerFile).size>10000)return workerFile;
+  const alternate=path.join(__dirname,'bgutil-ytdlp-pot-provider','server','worker-backend.js');
+  if(fs.existsSync(alternate)&&fs.statSync(alternate).size>10000){fs.copyFileSync(alternate,workerFile);return workerFile}
+  console.log('worker-backend.js missing; downloading known-good worker engine at runtime…');
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
+  try{
+    const r=await fetch(WORKER_BACKEND_URL,{redirect:'follow',signal:controller.signal,headers:{'user-agent':'DTL-War-Room/2.0'}});
+    if(!r.ok)throw new Error(`backend download HTTP ${r.status}`);
+    const text=await r.text();
+    if(text.length<10000||!text.includes('runCoreWorkerCycle'))throw new Error('downloaded backend did not pass integrity check');
+    fs.writeFileSync(workerFile,text);
+    console.log(`Recovered worker backend (${text.length} bytes).`);
+    return workerFile;
+  }finally{clearTimeout(timer)}
+}
+
+async function startWorkerBackend(){
+  try{
+    const workerFile=await ensureWorkerBackendFile();
+    if(workerChild && !workerChild.killed) return;
+    const env={...process.env,PORT:String(WORKER_BACKEND_PORT),DTL_WORKER_INTERVAL_MINUTES:String(process.env.DTL_WORKER_INTERVAL_MINUTES||10),OPPORTUNITY_SCAN_INTERVAL_MINUTES:String(process.env.OPPORTUNITY_SCAN_INTERVAL_MINUTES||20)};
+    workerChild=spawn(process.execPath,[workerFile],{cwd:__dirname,env,stdio:['ignore','inherit','inherit']});
+    console.log(`Real worker backend started on internal port ${WORKER_BACKEND_PORT}`);
+    workerChild.on('exit',(code,signal)=>{
+      console.log(`Real worker backend exited code=${code} signal=${signal}`);
+      workerBackendAlive=false;workerBackendLastError=`worker process exited code=${code} signal=${signal}`;workerChild=null;
+      if(!shuttingDown) setTimeout(()=>startWorkerBackend().catch(e=>console.error('worker restart failed',e.message)),5000).unref();
+    });
+  }catch(err){workerBackendAlive=false;workerBackendLastError=String(err.message||err);console.error('Unable to start real worker backend:',err.message);if(!shuttingDown)setTimeout(()=>startWorkerBackend().catch(()=>{}),15000).unref()}
 }
 
 async function proxyWorker(pathname,method='POST'){
-  const r=await fetch(`http://127.0.0.1:${WORKER_BACKEND_PORT}${pathname}`,{method,headers:{'content-type':'application/json'}});
-  const text=await r.text();
-  let data;try{data=JSON.parse(text)}catch(_){data={ok:r.ok,text}}
-  if(!r.ok) throw new Error(data?.error||`Worker backend HTTP ${r.status}`);
-  return data;
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),180000);
+  try{
+    const r=await fetch(`http://127.0.0.1:${WORKER_BACKEND_PORT}${pathname}`,{method,headers:{'content-type':'application/json'},signal:controller.signal});
+    const text=await r.text();
+    let data;try{data=JSON.parse(text)}catch(_){data={ok:r.ok,text}}
+    if(!r.ok) throw new Error(data?.error||`Worker backend HTTP ${r.status}`);
+    workerBackendAlive=true;workerBackendLastError=null;return data;
+  }finally{clearTimeout(timer)}
 }
+
+function mergeByKey(primary=[],secondary=[],keyFn){const out=[],seen=new Set();for(const item of [...primary,...secondary]){if(!item)continue;const k=keyFn(item);if(!k||seen.has(k))continue;seen.add(k);out.push(item)}return out}
+async function syncWorkerState(){
+  try{
+    const child=await proxyWorker('/api/state','GET');
+    let state=await getState();
+    if(Array.isArray(child.agents)){const byId=new Map(child.agents.map(a=>[String(a.id||'').toLowerCase(),a]));state.agents=(state.agents||[]).map(a=>byId.has(String(a.id||'').toLowerCase())?{...a,...byId.get(String(a.id||'').toLowerCase())}:a)}
+    if(child.workerEngine)state.workerEngine=child.workerEngine;
+    if(Array.isArray(child.platforms)){const byId=new Map(child.platforms.map(x=>[String(x.id||'').toLowerCase(),x]));state.platforms=(state.platforms||[]).map(p=>{const c=byId.get(String(p.id||'').toLowerCase());return c?{...p,...c,metricLabel:p.metricLabel,metricTarget:p.metricTarget,note:p.note}:p})}
+    if(Array.isArray(child.opportunities)){const incoming=child.opportunities.filter(o=>o&&o.id!=='seed-1');state.opportunities=mergeByKey(incoming,state.opportunities||[],o=>o.sourceUrl||o.applicationUrl||o.website||o.id).slice(0,40)}
+    if(Array.isArray(child.analytics))state.analytics=child.analytics.slice(0,200);
+    if(Array.isArray(child.verdicts))state.verdicts=child.verdicts.slice(0,100);
+    if(Array.isArray(child.activity)){const incoming=child.activity.slice(0,30);state.activity=mergeByKey(incoming,state.activity||[],x=>`${x.agent||''}|${x.text||''}|${x.time||''}`).slice(0,100)}
+    state.meta=state.meta||{};state.meta.workerBackend={alive:true,lastSyncAt:new Date().toISOString(),lastError:null};
+    workerBackendAlive=true;workerBackendLastSync=new Date().toISOString();workerBackendLastError=null;
+    await saveState(state);
+  }catch(err){workerBackendAlive=false;workerBackendLastError=String(err.message||err);try{const state=await getState();state.meta=state.meta||{};state.meta.workerBackend={alive:false,lastSyncAt:workerBackendLastSync,lastError:workerBackendLastError};await saveState(state)}catch(_){}}
+}
+function startWorkerSync(){if(workerSyncTimer)clearInterval(workerSyncTimer);setTimeout(()=>syncWorkerState(),5000).unref();workerSyncTimer=setInterval(()=>syncWorkerState(),5000);workerSyncTimer.unref()}
 
 
 const DEFAULT_OPPORTUNITIES = [
@@ -161,7 +204,7 @@ const SEED_STATE = {
 let memoryState=JSON.parse(JSON.stringify(SEED_STATE));let pool=null;let dbReady=false;let server=null;
 app.disable('x-powered-by');app.use(express.json({limit:'2mb'}));
 
-function inferCategory(o={}){const s=`${o.category||''} ${o.type||''} ${o.compensation||''}`.toLowerCase();if(s.includes('sponsor')||s.includes('paid'))return 'sponsor';if(s.includes('affiliate')||s.includes('commission'))return 'affiliate';return 'free_product'}
+function inferCategory(o={}){const explicit=String(o.category||'').toLowerCase();if(['free_product','sponsor','affiliate'].includes(explicit))return explicit;const s=`${o.type||''} ${o.compensation||''} ${o.shortDescription||''}`.toLowerCase();if(/sponsor|paid|paid campaign|paid partnership/.test(s))return 'sponsor';if(/free product|gifted|complimentary|sample|product box|product seeding|product testing/.test(s))return 'free_product';if(/affiliate|commission/.test(s))return 'affiliate';return 'free_product'}
 function genericEmail(o){return `Subject: Down The Line Podcast x ${o.brand||'Brand'}\n\nHi ${o.brand||'Brand'} Team,\n\nI’m reaching out from Down The Line Podcast. We create entertainment-driven content across TikTok, Instagram, and YouTube and would love to explore a collaboration that fits naturally with our audience.\n\nWe’d like to discuss a paid opportunity first when budget is available, while remaining open to affiliate or gifted-product options when the fit is strong. Any relationship would be clearly disclosed, and we never promise a positive review or guaranteed coverage.\n\nBest,\nDown The Line Podcast`}
 function normalizeOpportunity(o){return {...o,category:o.category||inferCategory(o),shortDescription:o.shortDescription||o.why||'Open creator opportunity',website:o.website||((o.source||'').startsWith('http')?o.source:null),productUrl:o.productUrl||o.website||null,contactUrl:o.contactUrl||o.website||null,contactMethod:o.contactMethod||o.contact||'Use the official application/contact route.',partnership:o.partnership||o.why||'Potential creator partnership.',fitReason:o.fitReason||o.why||'Fit should be re-evaluated against current DTL content.',emailTemplate:o.emailTemplate||genericEmail(o)}}
 function normalizeState(state){state=state||{};state.meta=state.meta||{};state.platforms=Array.isArray(state.platforms)?state.platforms:SEED_STATE.platforms;state.agents=(Array.isArray(state.agents)?state.agents:SEED_STATE.agents).map(a=>({...a,workState:a.workState||'idle'}));let opps=Array.isArray(state.opportunities)?state.opportunities.filter(o=>o.id!=='seed-1'):[];if(!opps.length)opps=DEFAULT_OPPORTUNITIES;state.opportunities=opps.map(normalizeOpportunity);if(!state.trends||!Array.isArray(state.trends.hashtags)||!state.trends.hashtags.length)state.trends=JSON.parse(JSON.stringify(DEFAULT_TRENDS));state.trends.refreshStatus=state.trends.refreshStatus||'waiting';if(!state.analysis30m)state.analysis30m=JSON.parse(JSON.stringify(DEFAULT_ANALYSIS_30M));state.activity=Array.isArray(state.activity)?state.activity:[];state.meeting=state.meeting||SEED_STATE.meeting;state.gamePlan=state.gamePlan||SEED_STATE.gamePlan;return state}
@@ -193,7 +236,7 @@ function sendStatic(res,fileName,type,maxAge='public, max-age=86400'){const file
 app.get('/logo.png',(_req,res)=>sendStatic(res,'logo.png','png','no-store'));
 app.get('/title-logo-v3.png',(_req,res)=>sendStatic(res,'title-logo-v3.png','png','no-store'));
 app.get('/title-logo-v4.png',(_req,res)=>sendStatic(res,'title-logo-v4.png','png','no-store'));
-app.get('/health',(_req,res)=>res.status(200).json({ok:true,service:'dtl-war-room',database:dbReady?'connected':'memory-fallback',frontend:'live-status-trends-v3',trendRefreshMinutes:10,analysisRefreshMinutes:30,time:new Date().toISOString()}));
+app.get('/health',(_req,res)=>res.status(200).json({ok:true,service:'dtl-war-room',database:dbReady?'connected':'memory-fallback',frontend:'live-status-trends-v4-trackers-fixed',workerBackendAlive,workerBackendLastSync,workerBackendLastError,workerBackendFile:fs.existsSync(path.join(__dirname,'worker-backend.js')),trendRefreshMinutes:10,analysisRefreshMinutes:30,time:new Date().toISOString()}));
 app.get('/api/state',async(_req,res)=>{try{res.set('Cache-Control','no-store');res.json(await getState())}catch(err){res.status(500).json({error:'Unable to load War Room state',detail:err.message})}});
 app.post('/api/ingest',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();const event=req.body||{};for(const key of ['platforms','agents','meeting','gamePlan','opportunities','verdicts','analytics','trends','analysis30m'])if(event[key]!==undefined)state[key]=event[key];if(event.activity)state.activity=[...event.activity,...(state.activity||[])].slice(0,100);res.json({ok:true,state:await saveState(state)})}catch(err){res.status(500).json({error:err.message})}});
 app.post('/api/trends',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();state.trends={...(state.trends||{}),...(req.body||{}),lastUpdated:req.body?.lastUpdated||new Date().toISOString()};await saveState(state);res.json({ok:true,trends:state.trends})}catch(err){res.status(500).json({error:err.message})}});
@@ -206,5 +249,5 @@ app.post('/api/workers-run',async(req,res)=>{try{res.json(await proxyWorker('/ap
 app.post('/api/opportunity-scan',async(req,res)=>{try{res.json(await proxyWorker('/api/opportunity-scan','POST'))}catch(err){res.status(503).json({error:err.message})}});
 app.post('/api/opportunities',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();const body=req.body||{};const item=normalizeOpportunity({...body,id:body.id||`opp-${Date.now()}`,createdAt:new Date().toISOString()});state.opportunities=[item,...(state.opportunities||[]).filter(x=>x.id!==item.id&&x.id!=='seed-1')];state.activity=[{time:'Now',agent:'OPPORTUNITY',text:`New opportunity: ${item.brand||'Unnamed lead'}`},...(state.activity||[])].slice(0,100);await saveState(state);res.json({ok:true,item})}catch(err){res.status(500).json({error:err.message})}});
 app.get('/',(_req,res)=>res.status(200).type('html').send(PAGE));app.get('/opportunity/:id',(_req,res)=>res.status(200).type('html').send(PAGE));app.use((req,res,next)=>{if(req.method!=='GET')return next();res.status(200).type('html').send(PAGE)});app.use((err,_req,res,_next)=>{console.error(err);res.status(500).json({error:'Server error'})});
-server=app.listen(PORT,HOST,async()=>{console.log(`DTL War Room listening on http://${HOST}:${PORT}`);await tryInitDb();startWorkerBackend();startSchedulers()});
-async function shutdown(signal){shuttingDown=true;console.log(`${signal} received; shutting down cleanly`);try{if(workerChild&&!workerChild.killed)workerChild.kill('SIGTERM')}catch(_){}if(server)server.close(async()=>{try{if(pool)await pool.end()}catch(_){}process.exit(0)});setTimeout(()=>process.exit(0),5000).unref()}process.on('SIGTERM',()=>shutdown('SIGTERM'));process.on('SIGINT',()=>shutdown('SIGINT'));
+server=app.listen(PORT,HOST,async()=>{console.log(`DTL War Room listening on http://${HOST}:${PORT}`);await tryInitDb();await startWorkerBackend();startWorkerSync();startSchedulers()});
+async function shutdown(signal){shuttingDown=true;console.log(`${signal} received; shutting down cleanly`);try{if(workerSyncTimer)clearInterval(workerSyncTimer);if(workerChild&&!workerChild.killed)workerChild.kill('SIGTERM')}catch(_){}if(server)server.close(async()=>{try{if(pool)await pool.end()}catch(_){}process.exit(0)});setTimeout(()=>process.exit(0),5000).unref()}process.on('SIGTERM',()=>shutdown('SIGTERM'));process.on('SIGINT',()=>shutdown('SIGINT'));
