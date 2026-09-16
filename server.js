@@ -231,7 +231,7 @@ function normalizeOpportunity(o){return {...o,category:o.category||inferCategory
 function normalizeState(state){state=state||{};state.meta=state.meta||{};state.platforms=Array.isArray(state.platforms)?state.platforms:SEED_STATE.platforms;state.agents=(Array.isArray(state.agents)?state.agents:SEED_STATE.agents).map(a=>({...a,workState:a.workState||'idle'}));let opps=Array.isArray(state.opportunities)?state.opportunities.filter(o=>o.id!=='seed-1'):[];if(!opps.length)opps=DEFAULT_OPPORTUNITIES;state.opportunities=opps.map(normalizeOpportunity);if(!state.trends||!Array.isArray(state.trends.hashtags)||!state.trends.hashtags.length)state.trends=JSON.parse(JSON.stringify(DEFAULT_TRENDS));state.trends.refreshStatus=state.trends.refreshStatus||'waiting';if(!state.analysis30m)state.analysis30m=JSON.parse(JSON.stringify(DEFAULT_ANALYSIS_30M));state.activity=Array.isArray(state.activity)?state.activity:[];state.meeting=state.meeting||SEED_STATE.meeting;state.gamePlan=state.gamePlan||SEED_STATE.gamePlan;return state}
 
 
-const TREND_REFRESH_MS=10*60*1000;
+const TREND_REFRESH_MS=Math.max(3,Number(process.env.TREND_REFRESH_MINUTES||5))*60*1000;
 const ANALYSIS_REFRESH_MS=30*60*1000;
 const PLATFORM_REFRESH_MS=Math.max(5,Number(process.env.PLATFORM_REFRESH_MINUTES||10))*60*1000;
 let trendTimer=null,analysisTimer=null,platformTimer=null,trendRunning=false,analysisRunning=false,platformRunning=false;
@@ -367,9 +367,75 @@ return out.slice(0,5)}
 function parseGoogleTrendsRss(xml){const items=xml.match(/<item>[\s\S]*?<\/item>/g)||[];const out=[];for(const item of items){const tm=item.match(/<title>([\s\S]*?)<\/title>/i);if(!tm)continue;const traffic=item.match(/<(?:ht:)?approx_traffic>([\s\S]*?)<\/(?:ht:)?approx_traffic>/i);const term=cleanText(tm[1]);if(!term)continue;out.push({term,metric:traffic?cleanText(traffic[1])+' searches':'Trending now',context:'Google Trends · U.S. current search momentum'});if(out.length>=5)break}return out}
 function setAgentWork(state,id,workState,current){const i=(state.agents||[]).findIndex(a=>a.id===id);if(i<0)return;const now=new Date().toISOString();state.agents[i]={...state.agents[i],workState,current:current||state.agents[i].current,currentlyDoing:current||state.agents[i].currentlyDoing,workStartedAt:now,workHeartbeatAt:now}}
 function finishAgentWork(state,id,summary){const i=(state.agents||[]).findIndex(a=>a.id===id);if(i<0)return;const now=new Date().toISOString();state.agents[i]={...state.agents[i],workState:'idle',lastCompletedAt:now,workHeartbeatAt:now,lastTaskSummary:summary||state.agents[i].lastTaskSummary}}
-async function refreshTrendData(){if(trendRunning)return;trendRunning=true;let state=await getState();const attempt=new Date();state.trends={...(state.trends||{}),lastAttempt:attempt.toISOString(),nextRefreshAt:new Date(attempt.getTime()+TREND_REFRESH_MS).toISOString(),refreshStatus:'refreshing'};setAgentWork(state,'algorithm','analysis','Refreshing live hashtag and search-trend sources');setAgentWork(state,'discovery','analysis','Comparing current trend momentum for DTL topics');await saveState(state);let hash=null,keys=null,hashErr=null,keyErr=null;try{const html=await fetchText('https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en?countryCode=US&period=7');hash=parseTikTokHashtags(html);if(hash.length<3)throw new Error('TikTok returned too few parseable hashtag rows')}catch(e){hashErr=e.message}
-try{const xml=await fetchText('https://trends.google.com/trending/rss?geo=US');keys=parseGoogleTrendsRss(xml);if(keys.length<3)throw new Error('Google Trends returned too few parseable items')}catch(e){keyErr=e.message}
-state=await getState();const now=new Date().toISOString();state.trends={...(state.trends||{}),lastAttempt:now,nextRefreshAt:new Date(Date.now()+TREND_REFRESH_MS).toISOString(),refreshStatus:(hash&&hash.length)||(keys&&keys.length)?'ok':'error'};if(hash&&hash.length){state.trends.hashtags=hash;state.trends.hashtagUpdatedAt=now;state.trends.hashtagSource='TikTok Creative Center public U.S. 7-day trends · auto-refreshed by the War Room.'}else{state.trends.hashtagSource='TikTok Creative Center refresh failed ('+(hashErr||'unknown error')+'). Showing the last verified hashtag snapshot.'}if(keys&&keys.length){state.trends.keywords=keys;state.trends.keywordUpdatedAt=now;state.trends.keywordSource='Google Trends U.S. trending searches · auto-refreshed by the War Room.'}else{state.trends.keywordSource='Google Trends refresh failed ('+(keyErr||'unknown error')+'). Showing the last verified keyword snapshot.'}if((hash&&hash.length)||(keys&&keys.length))state.trends.lastUpdated=now;finishAgentWork(state,'algorithm','Trend refresh completed');finishAgentWork(state,'discovery','Trend comparison completed');state.activity=[{time:'Now',agent:'ALGORITHM',text:'Automatic trend refresh '+(state.trends.refreshStatus==='ok'?'completed':'could not verify fresh sources')+'.'},...(state.activity||[])].slice(0,100);await saveState(state);trendRunning=false}
+function hashtagify(term){return '#'+String(term||'').toLowerCase().replace(/&amp;/g,' and ').replace(/[^a-z0-9]+/g,'').slice(0,46)}
+function deriveHashtagsFromKeywords(items=[]){const out=[];const seen=new Set();for(const item of items){const term=hashtagify(item.term||item.keyword);if(term.length<3||seen.has(term))continue;seen.add(term);out.push({term,metric:item.metric||'Trending now',context:'Live Google Trends fallback · cross-platform topic momentum'});if(out.length>=5)break}return out}
+async function refreshTrendData(){
+  if(trendRunning)return;
+  trendRunning=true;
+  let state=await getState();
+  const attempt=new Date();
+  const cycleId=`trend-${attempt.getTime()}`;
+  state.trends={...(state.trends||{}),lastAttempt:attempt.toISOString(),nextRefreshAt:new Date(attempt.getTime()+TREND_REFRESH_MS).toISOString(),refreshStatus:'refreshing',cycleId};
+  setAgentWork(state,'algorithm','analysis','Refreshing live hashtag and search-trend sources');
+  setAgentWork(state,'discovery','analysis','Comparing current trend momentum for DTL topics');
+  await saveState(state);
+
+  let hash=null,keys=null,hashErr=null,keyErr=null,hashSource=null;
+  const tiktokUrls=[
+    'https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en?countryCode=US&period=7',
+    'https://r.jina.ai/http://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en?countryCode=US&period=7'
+  ];
+  for(const url of tiktokUrls){
+    try{
+      const html=await fetchText(url);
+      const parsed=parseTikTokHashtags(html);
+      if(parsed.length>=3){hash=parsed;hashSource=url.includes('r.jina.ai')?'TikTok Creative Center via public text mirror':'TikTok Creative Center direct';break}
+      throw new Error('too few parseable hashtag rows');
+    }catch(e){hashErr=(hashErr?hashErr+' | ':'')+String(e.message||e)}
+  }
+  try{
+    const xml=await fetchText('https://trends.google.com/trending/rss?geo=US');
+    keys=parseGoogleTrendsRss(xml);
+    if(keys.length<3)throw new Error('Google Trends returned too few parseable items');
+  }catch(e){keyErr=e.message}
+
+  // If TikTok blocks Railway, do not freeze the left column forever.
+  // Use the live Google Trends terms as clearly-labelled hashtag candidates until TikTok is reachable again.
+  if((!hash||hash.length<3) && keys&&keys.length){
+    hash=deriveHashtagsFromKeywords(keys);
+    hashSource='Google Trends live fallback';
+  }
+
+  state=await getState();
+  const now=new Date().toISOString();
+  const gotHash=Boolean(hash&&hash.length);
+  const gotKeys=Boolean(keys&&keys.length);
+  state.trends={...(state.trends||{}),lastAttempt:now,nextRefreshAt:new Date(Date.now()+TREND_REFRESH_MS).toISOString(),refreshStatus:(gotHash||gotKeys)?'ok':'error',cycleId,lastCycleCompletedAt:now};
+  if(gotHash){
+    state.trends.hashtags=hash;
+    state.trends.hashtagUpdatedAt=now;
+    state.trends.hashtagSource=hashSource==='Google Trends live fallback'
+      ? 'TikTok Creative Center is currently blocking Railway. Hashtags are being rebuilt every cycle from live Google Trends topics so this panel stays fresh; metrics shown are search momentum, not TikTok view counts.'
+      : `${hashSource} · U.S. 7-day trends · auto-refreshed by the War Room.`;
+    state.trends.hashtagMode=hashSource==='Google Trends live fallback'?'fallback':'tiktok-live';
+  }else{
+    state.trends.hashtagSource='Hashtag refresh failed ('+(hashErr||'unknown error')+'). Keeping the last verified hashtag snapshot while the next automatic retry is scheduled.';
+    state.trends.hashtagMode='stale';
+  }
+  if(gotKeys){
+    state.trends.keywords=keys;
+    state.trends.keywordUpdatedAt=now;
+    state.trends.keywordSource='Google Trends U.S. trending searches · auto-refreshed by the War Room.';
+  }else{
+    state.trends.keywordSource='Google Trends refresh failed ('+(keyErr||'unknown error')+'). Keeping the last verified keyword snapshot.';
+  }
+  if(gotHash||gotKeys)state.trends.lastUpdated=now;
+  finishAgentWork(state,'algorithm','Trend refresh completed');
+  finishAgentWork(state,'discovery','Trend comparison completed');
+  state.activity=[{time:'Now',agent:'ALGORITHM',text:`Trend cycle ${cycleId} completed — hashtags ${gotHash?'updated':'stale'}, keywords ${gotKeys?'updated':'stale'}.`},...(state.activity||[])].slice(0,100);
+  await saveState(state);
+  trendRunning=false;
+}
 async function refreshAnalysisSummary(){if(analysisRunning)return;analysisRunning=true;let state=await getState();setAgentWork(state,'performance','analysis','Building the rolling 30-minute performance summary');setAgentWork(state,'goal','analysis','Re-checking monetization progress and bottlenecks');setAgentWork(state,'opportunity','analysis','Re-ranking current revenue opportunities');await saveState(state);state=await getState();const opps=(state.opportunities||[]).filter(o=>o.id!=='seed-1');const yt=(state.platforms||[]).find(p=>p.id==='youtube');const freshVideo=(state.agents||[]).some(a=>a.videoTitle&&Date.now()-new Date(a.taskUpdatedAt||0).getTime()<30*60*1000);const trendAge=Date.now()-new Date(state.trends?.lastUpdated||0).getTime();const doingWell=[];if(yt&&yt.followers>=yt.followerTarget)doingWell.push('YouTube has cleared the displayed subscriber target.');if(opps.length)doingWell.push(opps.length+' verified opportunity leads are stored in the pipeline.');const doingWrong=[];if(!freshVideo)doingWrong.push('No fresh video-analysis heartbeat was received in the last 30 minutes, so the War Room is not pretending a video is being watched.');if(!state.trends?.lastUpdated||trendAge>20*60*1000)doingWrong.push('Trend data is stale or the public trend source is blocking the refresh.');const improve=[];if(!freshVideo)improve.push('Push a real video assignment into /api/agents/:id so HOOK, RETENTION and CONTENT can show genuine green/blue activity.');if(state.trends?.refreshStatus==='error')improve.push('Keep the last verified trend snapshot visible while the automatic refresher retries every 10 minutes.');state.analysis30m={window:'Last 30 minutes',updatedAt:new Date().toISOString(),analyzed:'Reviewed live trend-source freshness, monetization progress, the opportunity pipeline, and real worker heartbeat timestamps.',doingWell:doingWell.join(' ')||'No new strength was verified from the available data in this cycle.',doingWrong:doingWrong.join(' ')||'No major system issue was detected in this cycle.',improve:improve.join(' ')||'Keep collecting real worker heartbeats and verified public performance data before changing the strategy.'};finishAgentWork(state,'performance','30-minute performance summary completed');finishAgentWork(state,'goal','Monetization review completed');finishAgentWork(state,'opportunity','Opportunity ranking review completed');state.activity=[{time:'Now',agent:'PERFORMANCE',text:'Rolling 30-minute system analysis completed.'},...(state.activity||[])].slice(0,100);await saveState(state);analysisRunning=false}
 function startSchedulers(){if(trendTimer||analysisTimer||platformTimer)return;setTimeout(()=>refreshTrendData().catch(e=>{trendRunning=false;console.error('trend refresh failed',e)}),3500);setTimeout(()=>refreshPlatformCounts().catch(e=>{platformRunning=false;console.error('platform count refresh failed',e)}),6000);setTimeout(()=>refreshAnalysisSummary().catch(e=>{analysisRunning=false;console.error('analysis refresh failed',e)}),9000);trendTimer=setInterval(()=>refreshTrendData().catch(e=>{trendRunning=false;console.error('trend refresh failed',e)}),TREND_REFRESH_MS);platformTimer=setInterval(()=>refreshPlatformCounts().catch(e=>{platformRunning=false;console.error('platform count refresh failed',e)}),PLATFORM_REFRESH_MS);analysisTimer=setInterval(()=>refreshAnalysisSummary().catch(e=>{analysisRunning=false;console.error('analysis refresh failed',e)}),ANALYSIS_REFRESH_MS)}
 async function tryInitDb(){if(!process.env.DATABASE_URL){console.log('DATABASE_URL not set; using in-memory state');return}try{pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_URL.includes('localhost')?false:{rejectUnauthorized:false},connectionTimeoutMillis:5000});await pool.query('SELECT 1');await pool.query(`CREATE TABLE IF NOT EXISTS war_room_state (id INTEGER PRIMARY KEY,payload JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);const {rows}=await pool.query('SELECT payload FROM war_room_state WHERE id=1');if(!rows.length){await pool.query('INSERT INTO war_room_state (id,payload) VALUES (1,$1)',[normalizeState(memoryState)]);}else{const normalized=normalizeState(rows[0].payload);memoryState=normalized;await pool.query('UPDATE war_room_state SET payload=$1,updated_at=NOW() WHERE id=1',[normalized]);}dbReady=true;console.log('PostgreSQL connected')}catch(err){dbReady=false;console.error('PostgreSQL unavailable; continuing with in-memory state:',err.message)}}
@@ -380,7 +446,7 @@ function sendStatic(res,fileName,type,maxAge='public, max-age=86400'){const file
 app.get('/logo.png',(_req,res)=>sendStatic(res,'logo.png','png','no-store'));
 app.get('/title-logo-v3.png',(_req,res)=>sendStatic(res,'title-logo-v3.png','png','no-store'));
 app.get('/title-logo-v4.png',(_req,res)=>sendStatic(res,'title-logo-v4.png','png','no-store'));
-app.get('/health',(_req,res)=>res.status(200).json({ok:true,service:'dtl-war-room',database:dbReady?'connected':'memory-fallback',frontend:'live-status-trends-v4-trackers-fixed',workerBackendAlive,workerBackendLastSync,workerBackendLastError,workerBackendFile:fs.existsSync(path.join(__dirname,'worker-backend.js')),trendRefreshMinutes:10,platformRefreshMinutes:Math.round(PLATFORM_REFRESH_MS/60000),analysisRefreshMinutes:30,time:new Date().toISOString()}));
+app.get('/health',(_req,res)=>res.status(200).json({ok:true,service:'dtl-war-room',database:dbReady?'connected':'memory-fallback',frontend:'live-status-trends-v4-trackers-fixed',workerBackendAlive,workerBackendLastSync,workerBackendLastError,workerBackendFile:fs.existsSync(path.join(__dirname,'worker-backend.js')),trendRefreshMinutes:Math.round(TREND_REFRESH_MS/60000),platformRefreshMinutes:Math.round(PLATFORM_REFRESH_MS/60000),analysisRefreshMinutes:30,time:new Date().toISOString()}));
 app.get('/api/state',async(_req,res)=>{try{res.set('Cache-Control','no-store');res.json(await getState())}catch(err){res.status(500).json({error:'Unable to load War Room state',detail:err.message})}});
 app.post('/api/ingest',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();const event=req.body||{};for(const key of ['platforms','agents','meeting','gamePlan','opportunities','verdicts','analytics','trends','analysis30m'])if(event[key]!==undefined)state[key]=event[key];if(event.activity)state.activity=[...event.activity,...(state.activity||[])].slice(0,100);res.json({ok:true,state:await saveState(state)})}catch(err){res.status(500).json({error:err.message})}});
 app.post('/api/trends',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();state.trends={...(state.trends||{}),...(req.body||{}),lastUpdated:req.body?.lastUpdated||new Date().toISOString()};await saveState(state);res.json({ok:true,trends:state.trends})}catch(err){res.status(500).json({error:err.message})}});

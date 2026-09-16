@@ -1,16 +1,11 @@
-# DTL War Room — Live Platform Count Trackers
+# DTL War Room — Live Trends Fix
 
-This update adds automatic public follower/subscriber refreshes to the three monetization cards.
+This update fixes the Trending Hashtags + Keywords panel so it does not remain frozen when TikTok Creative Center blocks Railway.
 
-## What now refreshes automatically
-- TikTok `@down.the.line.pod` follower count
-- Instagram `@down.the.line.pod` follower count
-- YouTube `@Down.The.Line.Podcast` subscriber count
-
-The tracker runs on Railway at startup and then every 10 minutes by default. Set `PLATFORM_REFRESH_MINUTES` to another value (minimum 5) if desired.
-
-Each card now shows whether the count is LIVE / RETRYING / TRACKING and when the last public count was verified. If a platform blocks Railway, the last verified count stays visible rather than being replaced by a guess.
-
-The Instagram nearest-unlock progress bar updates with its follower count. YouTube and TikTok private watch/eligible-view metrics stay DATA NOT CONNECTED unless an authorized analytics source provides them.
-
-Manual refresh endpoint: `POST /api/platform-refresh` (uses `INGEST_TOKEN` if configured).
+- Trend scan now runs every 5 minutes by default (configurable with `TREND_REFRESH_MINUTES`, minimum 3).
+- TikTok hashtags are attempted directly, then through a public text mirror.
+- If TikTok still blocks the server, the hashtag column is rebuilt from the current Google Trends feed every cycle and clearly labeled as a fallback.
+- Fallback metrics are search momentum, not falsely labeled TikTok views.
+- Keywords continue to refresh from Google Trends.
+- Every cycle records a unique cycle ID, last completed time, next scan time, and activity event.
+- Existing platform-count, opportunity, real-worker, logo and monetization-card fixes are preserved.
