@@ -1,20 +1,10 @@
-# DTL War Room — Clean Hero + Monetization First
+# DTL War Room — Live Worker Fix
 
-This update removes the illustrated bot strip from the hero, uses the transparent Down The Line logo, and puts the three platform follower/monetization cards directly under the logo.
+This build fixes the three problems reported in the live War Room:
 
-Homepage order:
-1. Transparent Down The Line logo
-2. TikTok / Instagram / YouTube monetization cards
-3. Opportunities
-4. Trending hashtags + keywords
-5. 30-minute analysis
-6. Worker workflow/status
-7. Meeting Room / Game Plan / Activity
+- removes the large boxed hero and shows the transparent Down The Line logo centered at the top
+- restores the real Railway worker engine from the previously working DTL worker build
+- makes worker status dots depend on fresh worker proof / heartbeats instead of seeded status text
+- refreshes trends every 10 minutes and shows freshness / next scan timing
 
-Files:
-- server.js
-- page.html
-- package.json
-- railway.json
-- logo.png
-- README.md
+The build downloads the previously working real worker backend during Railway's build, so the main web server can keep the newer Opportunity-first UI while the older proven worker engine processes real sources in the background.

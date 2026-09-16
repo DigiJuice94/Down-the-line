@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["...", "ffmpeg", "python312", "git"]
+nixPkgs = ["...", "ffmpeg", "python312", "git", "curl"]
 
 [phases.install]
 cmds = [
@@ -8,5 +8,6 @@ cmds = [
   "./.venv/bin/pip install --upgrade pip",
   "./.venv/bin/pip install -U \"yt-dlp[default]\" bgutil-ytdlp-pot-provider==2.0.0",
   "rm -rf bgutil-ytdlp-pot-provider && git clone --depth 1 --branch 2.0.0 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git bgutil-ytdlp-pot-provider",
-  "cd bgutil-ytdlp-pot-provider/server && npm ci && npx tsc"
+  "cd bgutil-ytdlp-pot-provider/server && npm ci && npx tsc",
+  "curl -fsSL https://raw.githubusercontent.com/DigiJuice94/Down-the-line/a9d256ac1ea9893e419445237e280ea16b22efbb/server.js -o worker-backend.js"
 ]
