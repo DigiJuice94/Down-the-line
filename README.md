@@ -1,14 +1,16 @@
-# DTL War Room — Trackers Fixed
+# DTL War Room — Live Platform Count Trackers
 
-This build fixes the live tracker problem.
+This update adds automatic public follower/subscriber refreshes to the three monetization cards.
 
-- Fixes the Railway build path that could place `worker-backend.js` in the wrong directory.
-- Runtime self-heals by downloading the known-good worker backend if the build artifact is missing.
-- Main dashboard now synchronizes real worker state from the internal worker backend every 5 seconds, even when PostgreSQL is not connected.
-- Opportunities discovered by the scanner are merged into the visible Opportunity board automatically.
-- Worker activity, analytics, verdicts and public platform counts from the worker backend are synchronized into the main dashboard.
-- Health endpoint now reports whether the internal worker backend is actually alive.
-- Fixed opportunity categorization so explicit Free Product / Sponsor / Affiliate categories stay where they belong.
-- Node 22+ restored for the current yt-dlp / YouTube challenge stack.
+## What now refreshes automatically
+- TikTok `@down.the.line.pod` follower count
+- Instagram `@down.the.line.pod` follower count
+- YouTube `@Down.The.Line.Podcast` subscriber count
 
-Railway should redeploy automatically after these files replace the current project.
+The tracker runs on Railway at startup and then every 10 minutes by default. Set `PLATFORM_REFRESH_MINUTES` to another value (minimum 5) if desired.
+
+Each card now shows whether the count is LIVE / RETRYING / TRACKING and when the last public count was verified. If a platform blocks Railway, the last verified count stays visible rather than being replaced by a guess.
+
+The Instagram nearest-unlock progress bar updates with its follower count. YouTube and TikTok private watch/eligible-view metrics stay DATA NOT CONNECTED unless an authorized analytics source provides them.
+
+Manual refresh endpoint: `POST /api/platform-refresh` (uses `INGEST_TOKEN` if configured).

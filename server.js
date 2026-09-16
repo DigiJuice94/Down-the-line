@@ -69,7 +69,28 @@ async function syncWorkerState(){
     let state=await getState();
     if(Array.isArray(child.agents)){const byId=new Map(child.agents.map(a=>[String(a.id||'').toLowerCase(),a]));state.agents=(state.agents||[]).map(a=>byId.has(String(a.id||'').toLowerCase())?{...a,...byId.get(String(a.id||'').toLowerCase())}:a)}
     if(child.workerEngine)state.workerEngine=child.workerEngine;
-    if(Array.isArray(child.platforms)){const byId=new Map(child.platforms.map(x=>[String(x.id||'').toLowerCase(),x]));state.platforms=(state.platforms||[]).map(p=>{const c=byId.get(String(p.id||'').toLowerCase());return c?{...p,...c,metricLabel:p.metricLabel,metricTarget:p.metricTarget,note:p.note}:p})}
+    if(Array.isArray(child.platforms)){
+      const byId=new Map(child.platforms.map(x=>[String(x.id||'').toLowerCase(),x]));
+      state.platforms=(state.platforms||[]).map(p=>{
+        const c=byId.get(String(p.id||'').toLowerCase());
+        if(!c)return p;
+        const merged={...p,...c,metricLabel:p.metricLabel,metricTarget:p.metricTarget,note:p.note};
+        const mainTs=Date.parse(p.publicCountUpdatedAt||0)||0;
+        const childTs=Date.parse(c.publicCountUpdatedAt||0)||0;
+        // The legacy worker backend still carries old seed counts. Never let it overwrite a newer public-count tracker result.
+        if(mainTs>=childTs){
+          merged.followers=p.followers;
+          merged.publicCountUpdatedAt=p.publicCountUpdatedAt;
+          merged.publicCountLastAttemptAt=p.publicCountLastAttemptAt;
+          merged.publicCountStatus=p.publicCountStatus;
+          merged.publicCountSource=p.publicCountSource;
+          merged.publicCountError=p.publicCountError;
+          merged.lastCountChangeAt=p.lastCountChangeAt;
+          if(String(p.id).toLowerCase()==='instagram') merged.metricValue=p.metricValue;
+        }
+        return merged;
+      })
+    }
     if(Array.isArray(child.opportunities)){const incoming=child.opportunities.filter(o=>o&&o.id!=='seed-1');state.opportunities=mergeByKey(incoming,state.opportunities||[],o=>o.sourceUrl||o.applicationUrl||o.website||o.id).slice(0,40)}
     if(Array.isArray(child.analytics))state.analytics=child.analytics.slice(0,200);
     if(Array.isArray(child.verdicts))state.verdicts=child.verdicts.slice(0,100);
@@ -212,11 +233,134 @@ function normalizeState(state){state=state||{};state.meta=state.meta||{};state.p
 
 const TREND_REFRESH_MS=10*60*1000;
 const ANALYSIS_REFRESH_MS=30*60*1000;
-let trendTimer=null,analysisTimer=null,trendRunning=false,analysisRunning=false;
+const PLATFORM_REFRESH_MS=Math.max(5,Number(process.env.PLATFORM_REFRESH_MINUTES||10))*60*1000;
+let trendTimer=null,analysisTimer=null,platformTimer=null,trendRunning=false,analysisRunning=false,platformRunning=false;
 function cleanText(s=''){return String(s).replace(/<!\[CDATA\[|\]\]>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim()}
 function stripTags(s=''){return cleanText(String(s).replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' '))}
 function humanCount(n){n=Number(n)||0;if(n>=1e9)return (n/1e9).toFixed(n>=1e10?0:1)+'B';if(n>=1e6)return (n/1e6).toFixed(n>=1e7?0:1)+'M';if(n>=1e3)return (n/1e3).toFixed(n>=1e4?0:1)+'K';return String(n)}
 async function fetchText(url,timeoutMs=12000){const c=new AbortController();const t=setTimeout(()=>c.abort(),timeoutMs);try{const r=await fetch(url,{headers:{'user-agent':'Mozilla/5.0 (compatible; DTLWarRoom/1.0)','accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'},redirect:'follow',signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.text()}finally{clearTimeout(t)}}
+function parseHumanCount(value){
+  const raw=String(value||'').replace(/&nbsp;/gi,' ').trim().replace(/,/g,'');
+  const m=raw.match(/([0-9]+(?:\.[0-9]+)?)\s*([KMB])?/i);
+  if(!m)return null;
+  const n=Number(m[1]); if(!Number.isFinite(n))return null;
+  const mult=({K:1e3,M:1e6,B:1e9})[(m[2]||'').toUpperCase()]||1;
+  return Math.round(n*mult);
+}
+function firstCount(html,patterns){
+  for(const pat of patterns){
+    const m=String(html||'').match(pat);
+    if(!m)continue;
+    const n=parseHumanCount(m[1]);
+    if(Number.isFinite(n)&&n>=0)return n;
+  }
+  return null;
+}
+async function fetchProfileText(url,timeoutMs=16000){
+  const c=new AbortController();const t=setTimeout(()=>c.abort(),timeoutMs);
+  try{
+    const r=await fetch(url,{redirect:'follow',signal:c.signal,headers:{
+      'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'accept-language':'en-US,en;q=0.9','cache-control':'no-cache','pragma':'no-cache'
+    }});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return await r.text();
+  }finally{clearTimeout(t)}
+}
+async function scrapeCountFromSources(sources,patterns){
+  const errors=[];
+  for(const source of sources){
+    try{
+      const html=await fetchProfileText(source.url);
+      const count=firstCount(html,patterns);
+      if(Number.isFinite(count))return {count,source:source.name,url:source.url};
+      errors.push(source.name+': count not found');
+    }catch(e){errors.push(source.name+': '+String(e.message||e))}
+  }
+  throw new Error(errors.join(' | ').slice(0,900));
+}
+async function fetchYouTubePublicCount(){
+  return scrapeCountFromSources([
+    {name:'YouTube profile',url:'https://www.youtube.com/@Down.The.Line.Podcast?hl=en'},
+    {name:'YouTube about',url:'https://www.youtube.com/@Down.The.Line.Podcast/about?hl=en'},
+    {name:'Jina YouTube fallback',url:'https://r.jina.ai/http://www.youtube.com/@Down.The.Line.Podcast/about'}
+  ],[
+    /\"subscriberCountText\"\s*:\s*\{\s*\"simpleText\"\s*:\s*\"([^\"]+)/i,
+    /\"subscriberCountText\"\s*:\s*\{[\s\S]{0,180}?\"text\"\s*:\s*\"([^\"]+)/i,
+    /([0-9][0-9.,]*\s*[KMB]?)\s+subscribers?/i,
+    /Subscribers?[^0-9]{0,30}([0-9][0-9.,]*\s*[KMB]?)/i
+  ]);
+}
+async function fetchTikTokPublicCount(){
+  return scrapeCountFromSources([
+    {name:'TikTok profile',url:'https://www.tiktok.com/@down.the.line.pod'},
+    {name:'Jina TikTok fallback',url:'https://r.jina.ai/http://www.tiktok.com/@down.the.line.pod'}
+  ],[
+    /\"followerCount\"\s*:\s*([0-9]+)/i,
+    /\"follower_count\"\s*:\s*([0-9]+)/i,
+    /\"fans\"\s*:\s*([0-9]+)/i,
+    /([0-9][0-9.,]*\s*[KMB]?)\s+Followers?/i
+  ]);
+}
+async function fetchInstagramPublicCount(){
+  return scrapeCountFromSources([
+    {name:'Instagram profile',url:'https://www.instagram.com/down.the.line.pod/'},
+    {name:'Jina Instagram fallback',url:'https://r.jina.ai/http://www.instagram.com/down.the.line.pod/'}
+  ],[
+    /\"edge_followed_by\"\s*:\s*\{\s*\"count\"\s*:\s*([0-9]+)/i,
+    /\"follower_count\"\s*:\s*([0-9]+)/i,
+    /content=\"([0-9][0-9.,]*\s*[KMB]?)\s+Followers/i,
+    /([0-9][0-9.,]*\s*[KMB]?)\s+Followers/i
+  ]);
+}
+async function refreshPlatformCounts(){
+  if(platformRunning)return;
+  platformRunning=true;
+  let state=await getState();
+  const started=new Date();
+  const previous=new Map((state.platforms||[]).map(p=>[String(p.id).toLowerCase(),{count:Number(p.followers||0),status:p.publicCountStatus||null}]));
+  state.platformTracker={...(state.platformTracker||{}),status:'refreshing',lastAttemptAt:started.toISOString(),nextRefreshAt:new Date(started.getTime()+PLATFORM_REFRESH_MS).toISOString(),lastError:null};
+  for(const p of state.platforms||[])p.publicCountLastAttemptAt=started.toISOString();
+  await saveState(state);
+  const tasks=[
+    ['youtube',fetchYouTubePublicCount],
+    ['tiktok',fetchTikTokPublicCount],
+    ['instagram',fetchInstagramPublicCount]
+  ];
+  const results=await Promise.all(tasks.map(async([id,fn])=>{try{return {id,ok:true,...await fn()}}catch(e){return {id,ok:false,error:String(e.message||e)}}}));
+  state=await getState();
+  const now=new Date().toISOString();
+  const changed=[];const failures=[];let successCount=0;
+  for(const result of results){
+    const p=(state.platforms||[]).find(x=>String(x.id).toLowerCase()===result.id);
+    if(!p)continue;
+    p.publicCountLastAttemptAt=now;
+    if(result.ok&&Number.isFinite(result.count)){
+      successCount++;
+      const old=Number(p.followers||0);
+      p.followers=result.count;
+      p.publicCountUpdatedAt=now;
+      p.publicCountStatus='ok';
+      p.publicCountSource=result.source;
+      p.publicCountError=null;
+      if(result.id==='instagram')p.metricValue=result.count;
+      if(result.id==='youtube')p.status=result.count>=Number(p.followerTarget||1000)?'Subscriber goal cleared':'Tracking public count';
+      else p.status='Tracking public count';
+      if(old!==result.count){p.lastCountChangeAt=now;changed.push(`${p.name}: ${old.toLocaleString()} → ${result.count.toLocaleString()}`)}
+    }else{
+      p.publicCountStatus='error';
+      p.publicCountError=result.error||'Public profile source blocked the refresh';
+      failures.push(`${p.name}: ${p.publicCountError}`);
+    }
+  }
+  state.platformTracker={...(state.platformTracker||{}),status:successCount===results.length?'ok':successCount?'partial':'error',lastAttemptAt:now,lastSuccessAt:successCount?now:(state.platformTracker?.lastSuccessAt||null),nextRefreshAt:new Date(Date.now()+PLATFORM_REFRESH_MS).toISOString(),lastError:failures.length?failures.join(' | ').slice(0,1200):null};
+  if(changed.length)state.activity=[{time:'Now',agent:'GOAL',text:'Public platform counts updated — '+changed.join(' · ')},...(state.activity||[])].slice(0,100);
+  else if(successCount)state.activity=[{time:'Now',agent:'GOAL',text:`Public follower/subscriber check completed (${successCount}/3 sources verified; no count change).`},...(state.activity||[])].slice(0,100);
+  await saveState(state);
+  platformRunning=false;
+}
+
 function parseTikTokHashtags(html){const out=[],seen=new Set();const jsonRe=/\"hashtagName\"\s*:\s*\"([^\"]+)\"/g;let m;while((m=jsonRe.exec(html))&&out.length<12){const term=cleanText(m[1]);if(!term||seen.has(term.toLowerCase()))continue;const near=html.slice(m.index,m.index+900);const vm=near.match(/\"(?:videoViews|viewCnt|views)\"\s*:\s*\"?(\d+)/i);const pm=near.match(/\"(?:publishCnt|postCount|posts)\"\s*:\s*\"?(\d+)/i);out.push({term:'#'+term.replace(/^#/,''),metric:vm?humanCount(vm[1])+' views':pm?humanCount(pm[1])+' posts':'Trending',context:'TikTok Creative Center · U.S. 7-day trend'});seen.add(term.toLowerCase())}
 if(out.length<5){const text=stripTags(html);const rowRe=/#\s*([A-Za-z0-9_]+)[\s\S]{0,120}?([0-9]+(?:\.[0-9]+)?\s*[KMB]?)\s*Posts[\s\S]{0,80}?([0-9]+(?:\.[0-9]+)?\s*[KMB]?)\s*Views/gi;while((m=rowRe.exec(text))&&out.length<12){const term=m[1];if(seen.has(term.toLowerCase()))continue;out.push({term:'#'+term,metric:m[3].replace(/\s+/g,'')+' views',context:'TikTok Creative Center · U.S. 7-day trend'});seen.add(term.toLowerCase())}const re=/#\s*([A-Za-z0-9_]+)\s*([0-9]+(?:\.[0-9]+)?\s*[KMB]?)\s*Posts/gi;while((m=re.exec(text))&&out.length<12){const term=m[1];if(seen.has(term.toLowerCase()))continue;out.push({term:'#'+term,metric:m[2].replace(/\s+/g,'')+' posts',context:'TikTok Creative Center · U.S. 7-day trend'});seen.add(term.toLowerCase())}}
 return out.slice(0,5)}
@@ -227,7 +371,7 @@ async function refreshTrendData(){if(trendRunning)return;trendRunning=true;let s
 try{const xml=await fetchText('https://trends.google.com/trending/rss?geo=US');keys=parseGoogleTrendsRss(xml);if(keys.length<3)throw new Error('Google Trends returned too few parseable items')}catch(e){keyErr=e.message}
 state=await getState();const now=new Date().toISOString();state.trends={...(state.trends||{}),lastAttempt:now,nextRefreshAt:new Date(Date.now()+TREND_REFRESH_MS).toISOString(),refreshStatus:(hash&&hash.length)||(keys&&keys.length)?'ok':'error'};if(hash&&hash.length){state.trends.hashtags=hash;state.trends.hashtagUpdatedAt=now;state.trends.hashtagSource='TikTok Creative Center public U.S. 7-day trends · auto-refreshed by the War Room.'}else{state.trends.hashtagSource='TikTok Creative Center refresh failed ('+(hashErr||'unknown error')+'). Showing the last verified hashtag snapshot.'}if(keys&&keys.length){state.trends.keywords=keys;state.trends.keywordUpdatedAt=now;state.trends.keywordSource='Google Trends U.S. trending searches · auto-refreshed by the War Room.'}else{state.trends.keywordSource='Google Trends refresh failed ('+(keyErr||'unknown error')+'). Showing the last verified keyword snapshot.'}if((hash&&hash.length)||(keys&&keys.length))state.trends.lastUpdated=now;finishAgentWork(state,'algorithm','Trend refresh completed');finishAgentWork(state,'discovery','Trend comparison completed');state.activity=[{time:'Now',agent:'ALGORITHM',text:'Automatic trend refresh '+(state.trends.refreshStatus==='ok'?'completed':'could not verify fresh sources')+'.'},...(state.activity||[])].slice(0,100);await saveState(state);trendRunning=false}
 async function refreshAnalysisSummary(){if(analysisRunning)return;analysisRunning=true;let state=await getState();setAgentWork(state,'performance','analysis','Building the rolling 30-minute performance summary');setAgentWork(state,'goal','analysis','Re-checking monetization progress and bottlenecks');setAgentWork(state,'opportunity','analysis','Re-ranking current revenue opportunities');await saveState(state);state=await getState();const opps=(state.opportunities||[]).filter(o=>o.id!=='seed-1');const yt=(state.platforms||[]).find(p=>p.id==='youtube');const freshVideo=(state.agents||[]).some(a=>a.videoTitle&&Date.now()-new Date(a.taskUpdatedAt||0).getTime()<30*60*1000);const trendAge=Date.now()-new Date(state.trends?.lastUpdated||0).getTime();const doingWell=[];if(yt&&yt.followers>=yt.followerTarget)doingWell.push('YouTube has cleared the displayed subscriber target.');if(opps.length)doingWell.push(opps.length+' verified opportunity leads are stored in the pipeline.');const doingWrong=[];if(!freshVideo)doingWrong.push('No fresh video-analysis heartbeat was received in the last 30 minutes, so the War Room is not pretending a video is being watched.');if(!state.trends?.lastUpdated||trendAge>20*60*1000)doingWrong.push('Trend data is stale or the public trend source is blocking the refresh.');const improve=[];if(!freshVideo)improve.push('Push a real video assignment into /api/agents/:id so HOOK, RETENTION and CONTENT can show genuine green/blue activity.');if(state.trends?.refreshStatus==='error')improve.push('Keep the last verified trend snapshot visible while the automatic refresher retries every 10 minutes.');state.analysis30m={window:'Last 30 minutes',updatedAt:new Date().toISOString(),analyzed:'Reviewed live trend-source freshness, monetization progress, the opportunity pipeline, and real worker heartbeat timestamps.',doingWell:doingWell.join(' ')||'No new strength was verified from the available data in this cycle.',doingWrong:doingWrong.join(' ')||'No major system issue was detected in this cycle.',improve:improve.join(' ')||'Keep collecting real worker heartbeats and verified public performance data before changing the strategy.'};finishAgentWork(state,'performance','30-minute performance summary completed');finishAgentWork(state,'goal','Monetization review completed');finishAgentWork(state,'opportunity','Opportunity ranking review completed');state.activity=[{time:'Now',agent:'PERFORMANCE',text:'Rolling 30-minute system analysis completed.'},...(state.activity||[])].slice(0,100);await saveState(state);analysisRunning=false}
-function startSchedulers(){if(trendTimer||analysisTimer)return;setTimeout(()=>refreshTrendData().catch(e=>{trendRunning=false;console.error('trend refresh failed',e)}),3500);setTimeout(()=>refreshAnalysisSummary().catch(e=>{analysisRunning=false;console.error('analysis refresh failed',e)}),9000);trendTimer=setInterval(()=>refreshTrendData().catch(e=>{trendRunning=false;console.error('trend refresh failed',e)}),TREND_REFRESH_MS);analysisTimer=setInterval(()=>refreshAnalysisSummary().catch(e=>{analysisRunning=false;console.error('analysis refresh failed',e)}),ANALYSIS_REFRESH_MS)}
+function startSchedulers(){if(trendTimer||analysisTimer||platformTimer)return;setTimeout(()=>refreshTrendData().catch(e=>{trendRunning=false;console.error('trend refresh failed',e)}),3500);setTimeout(()=>refreshPlatformCounts().catch(e=>{platformRunning=false;console.error('platform count refresh failed',e)}),6000);setTimeout(()=>refreshAnalysisSummary().catch(e=>{analysisRunning=false;console.error('analysis refresh failed',e)}),9000);trendTimer=setInterval(()=>refreshTrendData().catch(e=>{trendRunning=false;console.error('trend refresh failed',e)}),TREND_REFRESH_MS);platformTimer=setInterval(()=>refreshPlatformCounts().catch(e=>{platformRunning=false;console.error('platform count refresh failed',e)}),PLATFORM_REFRESH_MS);analysisTimer=setInterval(()=>refreshAnalysisSummary().catch(e=>{analysisRunning=false;console.error('analysis refresh failed',e)}),ANALYSIS_REFRESH_MS)}
 async function tryInitDb(){if(!process.env.DATABASE_URL){console.log('DATABASE_URL not set; using in-memory state');return}try{pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_URL.includes('localhost')?false:{rejectUnauthorized:false},connectionTimeoutMillis:5000});await pool.query('SELECT 1');await pool.query(`CREATE TABLE IF NOT EXISTS war_room_state (id INTEGER PRIMARY KEY,payload JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);const {rows}=await pool.query('SELECT payload FROM war_room_state WHERE id=1');if(!rows.length){await pool.query('INSERT INTO war_room_state (id,payload) VALUES (1,$1)',[normalizeState(memoryState)]);}else{const normalized=normalizeState(rows[0].payload);memoryState=normalized;await pool.query('UPDATE war_room_state SET payload=$1,updated_at=NOW() WHERE id=1',[normalized]);}dbReady=true;console.log('PostgreSQL connected')}catch(err){dbReady=false;console.error('PostgreSQL unavailable; continuing with in-memory state:',err.message)}}
 async function getState(){if(dbReady&&pool){try{const {rows}=await pool.query('SELECT payload FROM war_room_state WHERE id=1');if(rows[0]?.payload){memoryState=normalizeState(rows[0].payload);return memoryState}}catch(err){console.error('Database read failed; using memory state:',err.message)}}memoryState=normalizeState(memoryState);return memoryState}
 async function saveState(state){state=normalizeState(state);state.meta.updatedAt=new Date().toISOString();state.meta.mode=dbReady?'postgres':'memory';memoryState=state;if(dbReady&&pool)await pool.query('UPDATE war_room_state SET payload=$1,updated_at=NOW() WHERE id=1',[state]);return state}
@@ -236,7 +380,7 @@ function sendStatic(res,fileName,type,maxAge='public, max-age=86400'){const file
 app.get('/logo.png',(_req,res)=>sendStatic(res,'logo.png','png','no-store'));
 app.get('/title-logo-v3.png',(_req,res)=>sendStatic(res,'title-logo-v3.png','png','no-store'));
 app.get('/title-logo-v4.png',(_req,res)=>sendStatic(res,'title-logo-v4.png','png','no-store'));
-app.get('/health',(_req,res)=>res.status(200).json({ok:true,service:'dtl-war-room',database:dbReady?'connected':'memory-fallback',frontend:'live-status-trends-v4-trackers-fixed',workerBackendAlive,workerBackendLastSync,workerBackendLastError,workerBackendFile:fs.existsSync(path.join(__dirname,'worker-backend.js')),trendRefreshMinutes:10,analysisRefreshMinutes:30,time:new Date().toISOString()}));
+app.get('/health',(_req,res)=>res.status(200).json({ok:true,service:'dtl-war-room',database:dbReady?'connected':'memory-fallback',frontend:'live-status-trends-v4-trackers-fixed',workerBackendAlive,workerBackendLastSync,workerBackendLastError,workerBackendFile:fs.existsSync(path.join(__dirname,'worker-backend.js')),trendRefreshMinutes:10,platformRefreshMinutes:Math.round(PLATFORM_REFRESH_MS/60000),analysisRefreshMinutes:30,time:new Date().toISOString()}));
 app.get('/api/state',async(_req,res)=>{try{res.set('Cache-Control','no-store');res.json(await getState())}catch(err){res.status(500).json({error:'Unable to load War Room state',detail:err.message})}});
 app.post('/api/ingest',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();const event=req.body||{};for(const key of ['platforms','agents','meeting','gamePlan','opportunities','verdicts','analytics','trends','analysis30m'])if(event[key]!==undefined)state[key]=event[key];if(event.activity)state.activity=[...event.activity,...(state.activity||[])].slice(0,100);res.json({ok:true,state:await saveState(state)})}catch(err){res.status(500).json({error:err.message})}});
 app.post('/api/trends',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();state.trends={...(state.trends||{}),...(req.body||{}),lastUpdated:req.body?.lastUpdated||new Date().toISOString()};await saveState(state);res.json({ok:true,trends:state.trends})}catch(err){res.status(500).json({error:err.message})}});
@@ -245,9 +389,10 @@ app.post('/api/agents/:id',async(req,res)=>{if(!authorized(req))return res.statu
 app.post('/api/worker-heartbeat/:id',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();const id=String(req.params.id||'').toLowerCase();const index=(state.agents||[]).findIndex(a=>String(a.id).toLowerCase()===id);if(index<0)return res.status(404).json({error:'Agent not found'});const now=new Date().toISOString();state.agents[index]={...state.agents[index],...(req.body||{}),id:state.agents[index].id,workHeartbeatAt:now,taskUpdatedAt:now};await saveState(state);res.json({ok:true,agent:state.agents[index]})}catch(err){res.status(500).json({error:err.message})}});
 
 app.post('/api/trends-refresh',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{await refreshTrendData();res.json({ok:true,trends:(await getState()).trends})}catch(err){res.status(500).json({error:err.message})}});
+app.post('/api/platform-refresh',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{await refreshPlatformCounts();const s=await getState();res.json({ok:true,platforms:s.platforms,platformTracker:s.platformTracker})}catch(err){platformRunning=false;res.status(500).json({error:err.message})}});
 app.post('/api/workers-run',async(req,res)=>{try{res.json(await proxyWorker('/api/workers-run','POST'))}catch(err){res.status(503).json({error:err.message})}});
 app.post('/api/opportunity-scan',async(req,res)=>{try{res.json(await proxyWorker('/api/opportunity-scan','POST'))}catch(err){res.status(503).json({error:err.message})}});
 app.post('/api/opportunities',async(req,res)=>{if(!authorized(req))return res.status(401).json({error:'Unauthorized'});try{const state=await getState();const body=req.body||{};const item=normalizeOpportunity({...body,id:body.id||`opp-${Date.now()}`,createdAt:new Date().toISOString()});state.opportunities=[item,...(state.opportunities||[]).filter(x=>x.id!==item.id&&x.id!=='seed-1')];state.activity=[{time:'Now',agent:'OPPORTUNITY',text:`New opportunity: ${item.brand||'Unnamed lead'}`},...(state.activity||[])].slice(0,100);await saveState(state);res.json({ok:true,item})}catch(err){res.status(500).json({error:err.message})}});
 app.get('/',(_req,res)=>res.status(200).type('html').send(PAGE));app.get('/opportunity/:id',(_req,res)=>res.status(200).type('html').send(PAGE));app.use((req,res,next)=>{if(req.method!=='GET')return next();res.status(200).type('html').send(PAGE)});app.use((err,_req,res,_next)=>{console.error(err);res.status(500).json({error:'Server error'})});
 server=app.listen(PORT,HOST,async()=>{console.log(`DTL War Room listening on http://${HOST}:${PORT}`);await tryInitDb();await startWorkerBackend();startWorkerSync();startSchedulers()});
-async function shutdown(signal){shuttingDown=true;console.log(`${signal} received; shutting down cleanly`);try{if(workerSyncTimer)clearInterval(workerSyncTimer);if(workerChild&&!workerChild.killed)workerChild.kill('SIGTERM')}catch(_){}if(server)server.close(async()=>{try{if(pool)await pool.end()}catch(_){}process.exit(0)});setTimeout(()=>process.exit(0),5000).unref()}process.on('SIGTERM',()=>shutdown('SIGTERM'));process.on('SIGINT',()=>shutdown('SIGINT'));
+async function shutdown(signal){shuttingDown=true;console.log(`${signal} received; shutting down cleanly`);try{if(workerSyncTimer)clearInterval(workerSyncTimer);if(platformTimer)clearInterval(platformTimer);if(workerChild&&!workerChild.killed)workerChild.kill('SIGTERM')}catch(_){}if(server)server.close(async()=>{try{if(pool)await pool.end()}catch(_){}process.exit(0)});setTimeout(()=>process.exit(0),5000).unref()}process.on('SIGTERM',()=>shutdown('SIGTERM'));process.on('SIGINT',()=>shutdown('SIGINT'));
